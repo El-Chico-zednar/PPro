@@ -6,6 +6,7 @@ import { RouteMap } from './components/RouteMap';
 import { PaceChart } from './components/PaceChart';
 import { PaceTable } from './components/PaceTable';
 import { HomePage } from './components/HomePage';
+import { PasswordScreen } from './components/PasswordScreen';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 
@@ -27,6 +28,7 @@ import {
 } from './components/ui/alert-dialog';
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [viewMode, setViewMode] = useState<'home' | 'planner'>('home');
   const [currentRoute, setCurrentRoute] = useState<RouteData | null>(null);
   const [strategyName, setStrategyName] = useState('');
@@ -40,24 +42,35 @@ export default function App() {
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
 
   useEffect(() => {
-    // Load saved strategies from localStorage
-    const strategies = JSON.parse(localStorage.getItem('pacePro_savedStrategies') || '[]');
-    setSavedStrategies(strategies);
+    // Check if user is already authenticated
+    const authenticated = sessionStorage.getItem('authenticated') === 'true';
+    setIsAuthenticated(authenticated);
 
-    // Load from localStorage on mount
-    const saved = localStorage.getItem('pacePro_lastConfig');
-    if (saved) {
-      try {
-        const config = JSON.parse(saved);
-        if (config.targetTime) setTargetTime(config.targetTime);
-        if (config.intervalType) setIntervalType(config.intervalType);
-        if (config.pacingStrategy !== undefined) setPacingStrategy(config.pacingStrategy);
-        if (config.climbEffort !== undefined) setClimbEffort(config.climbEffort);
-      } catch (e) {
-        console.error('Error loading saved config', e);
+    if (authenticated) {
+      // Load saved strategies from localStorage
+      const strategies = JSON.parse(localStorage.getItem('pacePro_savedStrategies') || '[]');
+      setSavedStrategies(strategies);
+
+      // Load from localStorage on mount
+      const saved = localStorage.getItem('pacePro_lastConfig');
+      if (saved) {
+        try {
+          const config = JSON.parse(saved);
+          if (config.targetTime) setTargetTime(config.targetTime);
+          if (config.intervalType) setIntervalType(config.intervalType);
+          if (config.pacingStrategy !== undefined) setPacingStrategy(config.pacingStrategy);
+          if (config.climbEffort !== undefined) setClimbEffort(config.climbEffort);
+        } catch (e) {
+          console.error('Error loading saved config', e);
+        }
       }
     }
   }, []);
+
+  // Show password screen if not authenticated
+  if (!isAuthenticated) {
+    return <PasswordScreen onAuthenticated={() => setIsAuthenticated(true)} />;
+  }
 
   const handleCalculate = () => {
     if (!currentRoute) {
