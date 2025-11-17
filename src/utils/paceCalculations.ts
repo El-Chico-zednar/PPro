@@ -150,22 +150,69 @@ function createElevationBasedIntervals(route: RouteData): Omit<PaceInterval, 'pa
     }
   }
   
-  // Add final segment
-  if (route.totalDistance - segmentStart >= minSegmentLength) {
-    const startPoint = findPointAtDistance(route.points, segmentStart);
-    const endPoint = route.points[route.points.length - 1];
-    const { gain, loss } = calculateElevationChange(route.points, segmentStart, route.totalDistance);
+  // Always add final segment to ensure total distance matches
+  // If the final segment is too short, merge it with the previous interval
+  const remainingDistance = route.totalDistance - segmentStart;
+  
+  if (remainingDistance > 0) {
+    if (remainingDistance < minSegmentLength && intervals.length > 0) {
+      // Merge with previous interval if too short
+      const lastInterval = intervals[intervals.length - 1];
+      const startPoint = findPointAtDistance(route.points, lastInterval.startDistance);
+      const endPoint = route.points[route.points.length - 1];
+      const { gain, loss } = calculateElevationChange(route.points, lastInterval.startDistance, route.totalDistance);
+      
+      intervals[intervals.length - 1] = {
+        index: lastInterval.index,
+        startDistance: lastInterval.startDistance,
+        endDistance: route.totalDistance,
+        distance: route.totalDistance - lastInterval.startDistance,
+        elevationGain: gain,
+        elevationLoss: loss,
+        startPoint,
+        endPoint
+      };
+    } else {
+      // Add as separate interval
+      const startPoint = findPointAtDistance(route.points, segmentStart);
+      const endPoint = route.points[route.points.length - 1];
+      const { gain, loss } = calculateElevationChange(route.points, segmentStart, route.totalDistance);
+      
+      intervals.push({
+        index: intervals.length,
+        startDistance: segmentStart,
+        endDistance: route.totalDistance,
+        distance: route.totalDistance - segmentStart,
+        elevationGain: gain,
+        elevationLoss: loss,
+        startPoint,
+        endPoint
+      });
+    }
+  }
+  
+  // Verify that total distance matches - if not, adjust the last interval
+  const totalIntervalDistance = intervals.reduce((sum, interval) => sum + interval.distance, 0);
+  const distanceDifference = route.totalDistance - totalIntervalDistance;
+  
+  if (Math.abs(distanceDifference) > 0.1 && intervals.length > 0) {
+    // Adjust the last interval to match exact total distance
+    const lastInterval = intervals[intervals.length - 1];
+    const newEndDistance = route.totalDistance;
+    const startPoint = findPointAtDistance(route.points, lastInterval.startDistance);
+    const endPoint = findPointAtDistance(route.points, newEndDistance);
+    const { gain, loss } = calculateElevationChange(route.points, lastInterval.startDistance, newEndDistance);
     
-    intervals.push({
-      index: intervals.length,
-      startDistance: segmentStart,
-      endDistance: route.totalDistance,
-      distance: route.totalDistance - segmentStart,
+    intervals[intervals.length - 1] = {
+      index: lastInterval.index,
+      startDistance: lastInterval.startDistance,
+      endDistance: newEndDistance,
+      distance: newEndDistance - lastInterval.startDistance,
       elevationGain: gain,
       elevationLoss: loss,
       startPoint,
       endPoint
-    });
+    };
   }
   
   return intervals.length > 0 ? intervals : createIntervals(route, 'km');
