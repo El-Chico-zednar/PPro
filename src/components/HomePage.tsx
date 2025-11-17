@@ -13,6 +13,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from './ui/alert-dialog';
+import { RaceTrackLibrary } from './RaceTrackLibrary';
+import { RaceTrack } from '../services/raceTracks';
 
 interface SavedStrategy {
   id: number;
@@ -28,9 +30,16 @@ interface HomePageProps {
   onLoadStrategy?: (strategy: SavedStrategy) => void;
   savedStrategies: SavedStrategy[];
   onDeleteStrategy: (id: number) => void;
+  onSelectRaceTrack: (track: RaceTrack) => void;
 }
 
-export function HomePage({ onCreateNew, onLoadStrategy, savedStrategies, onDeleteStrategy }: HomePageProps) {
+export function HomePage({
+  onCreateNew,
+  onLoadStrategy,
+  savedStrategies,
+  onDeleteStrategy,
+  onSelectRaceTrack,
+}: HomePageProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('es-ES', { 
@@ -45,57 +54,6 @@ export function HomePage({ onCreateNew, onLoadStrategy, savedStrategies, onDelet
   // - Crear/editar/eliminar carreras
   // - Subir archivos GPX/TCX
   // - Gestionar información de las carreras (nombre, fecha, ubicación, etc.)
-  const popularRaces = [
-    {
-      id: 1,
-      name: "Maratón de Valencia",
-      distance: "42.195 km",
-      location: "Valencia, España",
-      date: "1 Dic 2025",
-      elevation: "+50m"
-    },
-    {
-      id: 2,
-      name: "10K Valencia Trinidad Alfonso",
-      distance: "10 km",
-      location: "Valencia, España",
-      date: "12 Ene 2026",
-      elevation: "+20m"
-    },
-    {
-      id: 3,
-      name: "Behobia-San Sebastián",
-      distance: "20 km",
-      location: "Gipuzkoa, España",
-      date: "9 Nov 2025",
-      elevation: "+180m"
-    },
-    {
-      id: 4,
-      name: "Media Maratón de Madrid",
-      distance: "21.097 km",
-      location: "Madrid, España",
-      date: "27 Abr 2025",
-      elevation: "+120m"
-    },
-    {
-      id: 5,
-      name: "Carrera de la Mujer Madrid",
-      distance: "6.5 km",
-      location: "Madrid, España",
-      date: "11 May 2025",
-      elevation: "+40m"
-    },
-    {
-      id: 6,
-      name: "San Silvestre Vallecana",
-      distance: "10 km",
-      location: "Madrid, España",
-      date: "31 Dic 2025",
-      elevation: "+150m"
-    }
-  ];
-
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
@@ -194,47 +152,10 @@ export function HomePage({ onCreateNew, onLoadStrategy, savedStrategies, onDelet
             </Card>
           </div>
 
-          {/* Right Panel - Carreras Populares */}
+          {/* Right Panel - Biblioteca de Carreras */}
           <div className="lg:col-span-2">
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="mb-1">Carreras Populares</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Próximamente podrás planificar con estos recorridos oficiales
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {popularRaces.map((race) => (
-                  <Card key={race.id} className="p-4 hover:border-primary/50 transition-colors opacity-60">
-                    <div>
-                      <h3 className="mb-1">{race.name}</h3>
-                      <p className="text-xs text-muted-foreground mb-2">
-                        {race.location}
-                      </p>
-                      <div className="flex items-center gap-1 mb-3">
-                        <Calendar className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">{race.date}</span>
-                      </div>
-                      
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        <Badge variant="secondary" className="text-xs">
-                          {race.distance}
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs">
-                          {race.elevation}
-                        </Badge>
-                      </div>
-
-                      <Button size="sm" variant="outline" disabled className="w-full">
-                        Próximamente
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
+              <RaceTrackLibrary onSelect={onSelectRaceTrack} />
             </Card>
           </div>
         </div>

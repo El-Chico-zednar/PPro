@@ -6,11 +6,12 @@ import { RouteMap } from './components/RouteMap';
 import { PaceChart } from './components/PaceChart';
 import { PaceTable } from './components/PaceTable';
 import { HomePage } from './components/HomePage';
-import { PasswordScreen } from './components/PasswordScreen';
+import { LandingPage } from './components/LandingPage';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 
 import { calculatePaceStrategy } from './utils/paceCalculations';
+import { parseGPX } from './utils/gpxParser';
 import { RouteData, PaceStrategy, IntervalType } from './types/pace';
 import { Play, Save, Share2, Home as HomeIcon } from 'lucide-react';
 import { Button } from './components/ui/button';
@@ -26,9 +27,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from './components/ui/alert-dialog';
+import { downloadTrackFile, RaceTrack } from './services/raceTracks';
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showLanding, setShowLanding] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return sessionStorage.getItem('landingDismissed') === 'true' ? false : true;
+  });
   const [viewMode, setViewMode] = useState<'home' | 'planner'>('home');
   const [currentRoute, setCurrentRoute] = useState<RouteData | null>(null);
   const [strategyName, setStrategyName] = useState('');
@@ -42,35 +47,54 @@ export default function App() {
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
 
   useEffect(() => {
-    // Check if user is already authenticated
-    const authenticated = sessionStorage.getItem('authenticated') === 'true';
-    setIsAuthenticated(authenticated);
+    // Load saved strategies from localStorage
+    const strategies = JSON.parse(localStorage.getItem('pacePro_savedStrategies') || '[]');
+    setSavedStrategies(strategies);
 
-    if (authenticated) {
-      // Load saved strategies from localStorage
-      const strategies = JSON.parse(localStorage.getItem('pacePro_savedStrategies') || '[]');
-      setSavedStrategies(strategies);
-
-      // Load from localStorage on mount
-      const saved = localStorage.getItem('pacePro_lastConfig');
-      if (saved) {
-        try {
-          const config = JSON.parse(saved);
-          if (config.targetTime) setTargetTime(config.targetTime);
-          if (config.intervalType) setIntervalType(config.intervalType);
-          if (config.pacingStrategy !== undefined) setPacingStrategy(config.pacingStrategy);
-          if (config.climbEffort !== undefined) setClimbEffort(config.climbEffort);
-        } catch (e) {
-          console.error('Error loading saved config', e);
-        }
+    // Load from localStorage on mount
+    const saved = localStorage.getItem('pacePro_lastConfig');
+    if (saved) {
+      try {
+        const config = JSON.parse(saved);
+        if (config.targetTime) setTargetTime(config.targetTime);
+        if (config.intervalType) setIntervalType(config.intervalType);
+        if (config.pacingStrategy !== undefined) setPacingStrategy(config.pacingStrategy);
+        if (config.climbEffort !== undefined) setClimbEffort(config.climbEffort);
+      } catch (e) {
+        console.error('Error loading saved config', e);
       }
     }
   }, []);
 
-  // Show password screen if not authenticated
-  if (!isAuthenticated) {
-    return <PasswordScreen onAuthenticated={() => setIsAuthenticated(true)} />;
+  const handleLandingStart = () => {
+    setShowLanding(false);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('landingDismissed', 'true');
+    }
+  };
+
+  if (showLanding) {
+    return <LandingPage onStart={handleLandingStart} />;
   }
+
+  const handleRaceTrackSelect = async (track: RaceTrack) => {
+    const loadingId = toast.loading(`Cargando "${track.name}"...`);
+    try {
+      const fileContent = await downloadTrackFile(track.gpx_storage_path);
+      const route = parseGPX(fileContent, track.name || track.slug);
+
+      setCurrentRoute(route);
+      setPaceData(null);
+      setEditingStrategyId(null);
+      setStrategyName(track.name || '');
+      setViewMode('planner');
+
+      toast.success(`Recorrido "${track.name}" listo`, { id: loadingId });
+    } catch (error) {
+      console.error('Error cargando la carrera desde Supabase', error);
+      toast.error('No se pudo cargar el recorrido. Intenta de nuevo más tarde.', { id: loadingId });
+    }
+  };
 
   const handleCalculate = () => {
     if (!currentRoute) {
@@ -255,6 +279,7 @@ export default function App() {
         }}
         savedStrategies={savedStrategies}
         onDeleteStrategy={handleDeleteStrategy}
+        onSelectRaceTrack={handleRaceTrackSelect}
       />
     );
   }
