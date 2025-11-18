@@ -3,7 +3,7 @@ import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Slider } from './ui/slider';
 import { IntervalType } from '../types/pace';
-import { Clock, Route, TrendingDown, TrendingUp, Mountain } from 'lucide-react';
+import { Clock, Route, TrendingDown, TrendingUp, Mountain, Ruler } from 'lucide-react';
 
 interface ConfigurationPanelProps {
   targetTime: string;
@@ -14,6 +14,8 @@ interface ConfigurationPanelProps {
   onPacingStrategyChange: (value: number) => void;
   climbEffort: number;
   onClimbEffortChange: (value: number) => void;
+  segmentLength: number;
+  onSegmentLengthChange: (value: number) => void;
 }
 
 export function ConfigurationPanel({
@@ -24,7 +26,9 @@ export function ConfigurationPanel({
   pacingStrategy,
   onPacingStrategyChange,
   climbEffort,
-  onClimbEffortChange
+  onClimbEffortChange,
+  segmentLength,
+  onSegmentLengthChange
 }: ConfigurationPanelProps) {
   return (
     <div className="space-y-6 mt-6">
@@ -60,6 +64,33 @@ export function ConfigurationPanel({
           </SelectContent>
         </Select>
       </div>
+
+      {/* Segment Length - Solo visible cuando intervalType es 'elevation' */}
+      {intervalType === 'elevation' && (
+        <div className="space-y-3">
+          <Label className="flex items-center gap-2">
+            <Ruler className="h-4 w-4" />
+            Longitud de segmentos
+          </Label>
+          <div className="px-2">
+            <Slider
+              value={[segmentLength]}
+              onValueChange={(values) => onSegmentLengthChange(values[0])}
+              min={-50}
+              max={50}
+              step={10}
+              className="w-full"
+            />
+          </div>
+          <div className="flex justify-between text-xs text-muted-foreground px-1">
+            <span>Más cortos</span>
+            <span className={segmentLength === 0 ? 'font-medium text-foreground' : 'text-foreground'}>
+              {segmentLength === 0 ? 'Normal' : segmentLength > 0 ? `+${segmentLength}%` : `${segmentLength}%`}
+            </span>
+            <span>Más largos</span>
+          </div>
+        </div>
+      )}
 
       {/* Pacing Strategy */}
       <div className="space-y-3">
