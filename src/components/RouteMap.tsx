@@ -1,17 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
 import { RouteData, PaceStrategy } from '../types/pace';
-import { MapPin, Navigation } from 'lucide-react';
+import { Navigation } from 'lucide-react';
+
+interface HoverPoint {
+  lat: number;
+  lng: number;
+  distance: number;
+  elevation: number;
+}
 
 interface RouteMapProps {
   route: RouteData;
   paceData: PaceStrategy | null;
+  hoverPoint?: HoverPoint | null;
 }
 
-export function RouteMap({ route, paceData }: RouteMapProps) {
+export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const routeLayerRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const hoverMarkerRef = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [leafletReady, setLeafletReady] = useState(false);
 
@@ -136,6 +145,10 @@ export function RouteMap({ route, paceData }: RouteMapProps) {
       mapRef.current.removeLayer(marker);
     });
     markersRef.current = [];
+    if (hoverMarkerRef.current) {
+      mapRef.current.removeLayer(hoverMarkerRef.current);
+      hoverMarkerRef.current = null;
+    }
 
     // Draw route
     const latlngs = route.points.map(p => [p.lat, p.lng] as [number, number]);
@@ -207,9 +220,46 @@ export function RouteMap({ route, paceData }: RouteMapProps) {
     }, 100);
   }, [leafletReady, route, paceData]);
 
-  // Cleanup on unmount
   useEffect(() => {
+    const L = (window as any).L;
+    if (!L || !mapRef.current) return;
+
+    if (hoverPoint) {
+      const latlng: [number, number] = [hoverPoint.lat, hoverPoint.lng];
+      if (!hoverMarkerRef.current) {
+        const hoverIcon = L.divIcon({
+          html: `
+            <div style="
+              width: 22px;
+              height: 22px;
+              border-radius: 50%;
+              border: 3px solid #f59e0b;
+              background-color: rgba(249, 115, 22, 0.85);
+              box-shadow: 0 0 0 6px rgba(249, 115, 22, 0.25);
+            "></div>`,
+          className: '',
+          iconSize: [22, 22],
+          iconAnchor: [11, 11]
+        });
+        hoverMarkerRef.current = L.marker(latlng, { icon: hoverIcon }).addTo(mapRef.current);
+        hoverMarkerRef.current.setZIndexOffset?.(1000);
+      } else {
+        hoverMarkerRef.current.setLatLng(latlng);
+        hoverMarkerRef.current.setZIndexOffset?.(1000);
+      }
+    } else if (hoverMarkerRef.current) {
+      mapRef.current.removeLayer(hoverMarkerRef.current);
+      hoverMarkerRef.current = null;
+    }
+  }, [hoverPoint]);
+
+  // Cleanup on unmount
+useEffect(() => {
     return () => {
+      if (hoverMarkerRef.current && mapRef.current) {
+        mapRef.current.removeLayer(hoverMarkerRef.current);
+        hoverMarkerRef.current = null;
+      }
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;

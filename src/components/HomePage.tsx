@@ -15,15 +15,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from './ui/alert-dialog';
-
-interface SavedStrategy {
-  id: number;
-  date: string;
-  name?: string;
-  route: string;
-  targetTime: string;
-  paceData: any;
-}
+import { SavedStrategy } from '../types/strategy';
 
 export interface PopularRace {
   id: number | string;

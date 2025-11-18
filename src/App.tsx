@@ -1,20 +1,22 @@
 import { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Card } from './components/ui/card';
 import { FileUploader } from './components/FileUploader';
 import { ConfigurationPanel } from './components/ConfigurationPanel';
 import { RouteMap } from './components/RouteMap';
 import { PaceChart } from './components/PaceChart';
 import { PaceTable } from './components/PaceTable';
-import { HomePage } from './components/HomePage';
+import { HomePage, PopularRace } from './components/HomePage';
+import { LandingPage } from './components/LandingPage';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 
 import { calculatePaceStrategy } from './utils/paceCalculations';
 import { supabase, GPX_BUCKET } from './supabase/client';
 import { parseGPX, parseTCX } from './utils/gpxParser';
-import { PopularRace } from './components/HomePage';
 import { RouteData, PaceStrategy, IntervalType } from './types/pace';
-import { Play, Save, Share2, Home as HomeIcon, RotateCcw } from 'lucide-react';
+import { SavedStrategy } from './types/strategy';
+import { Play, Save, Home as HomeIcon, RotateCcw } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { toast } from 'sonner@2.0.3';
 import { Toaster } from './components/ui/sonner';
@@ -29,8 +31,15 @@ import {
   AlertDialogTitle,
 } from './components/ui/alert-dialog';
 
+type HoverPoint = {
+  lat: number;
+  lng: number;
+  distance: number;
+  elevation: number;
+};
+
 export default function App() {
-  const [viewMode, setViewMode] = useState<'home' | 'planner'>('home');
+  const navigate = useNavigate();
   const [currentRoute, setCurrentRoute] = useState<RouteData | null>(null);
   const [strategyName, setStrategyName] = useState('');
   const [targetTime, setTargetTime] = useState('00:45:00');
@@ -39,11 +48,12 @@ export default function App() {
   const [climbEffort, setClimbEffort] = useState(0); // -50 to 50 (easier to harder)
   const [segmentLength, setSegmentLength] = useState(0); // -50 to 50 (shorter to longer segments)
   const [paceData, setPaceData] = useState<PaceStrategy | null>(null);
-  const [savedStrategies, setSavedStrategies] = useState<any[]>([]);
+  const [savedStrategies, setSavedStrategies] = useState<SavedStrategy[]>([]);
   const [editingStrategyId, setEditingStrategyId] = useState<number | null>(null);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [nameError, setNameError] = useState<string>('');
   const [loadingRaceId, setLoadingRaceId] = useState<string | number | null>(null);
+  const [hoverPoint, setHoverPoint] = useState<HoverPoint | null>(null);
   
   // Estado para los parámetros originales de una estrategia cargada
   const [originalParams, setOriginalParams] = useState<{
@@ -104,35 +114,15 @@ export default function App() {
     }));
   }, [currentRoute, targetTime, intervalType, pacingStrategy, climbEffort, segmentLength]);
 
-  const handleCalculate = () => {
-    if (!currentRoute) {
-      toast.error('Por favor, sube un archivo GPX o TCX');
-      return;
+  useEffect(() => {
+    setHoverPoint(null);
+  }, [currentRoute]);
+
+  useEffect(() => {
+    if (!paceData) {
+      setHoverPoint(null);
     }
-
-    const strategy = calculatePaceStrategy(
-      currentRoute,
-      targetTime,
-      intervalType,
-      pacingStrategy,
-      climbEffort,
-      segmentLength
-    );
-
-    setPaceData(strategy);
-    
-    // Save to localStorage
-    localStorage.setItem('pacePro_lastConfig', JSON.stringify({
-      targetTime,
-      intervalType,
-      pacingStrategy,
-      climbEffort,
-      segmentLength,
-      routeName: currentRoute.name
-    }));
-
-    toast.success('Estrategia de ritmo calculada');
-  };
+  }, [paceData]);
 
   const handleSaveStrategy = () => {
     if (!paceData) return;
@@ -342,7 +332,7 @@ export default function App() {
       setStrategyName(race.name || '');
       setEditingStrategyId(null);
       setOriginalParams(null);
-      setViewMode('planner');
+      navigate('/race-configurator');
       toast.success(`Recorrido "${race.name}" cargado`);
     } catch (error: any) {
       console.error('Error cargando GPX de Supabase', error);
@@ -350,6 +340,7 @@ export default function App() {
       toast.error(`No se pudo cargar el GPX de la carrera: ${errorMessage}`);
     } finally {
       setLoadingRaceId(null);
+      setHoverPoint(null);
     }
   };
 
@@ -360,112 +351,10 @@ export default function App() {
     toast.success('Estrategia eliminada');
   };
 
-  const handleShare = () => {
-    if (!paceData) return;
-    
-    const shareData = {
-      route: currentRoute?.name,
-      targetTime,
-      intervalType,
-      pacingStrategy,
-      climbEffort,
-      segmentLength
-    };
-    const encoded = btoa(JSON.stringify(shareData));
-    const url = `${window.location.origin}${window.location.pathname}?plan=${encoded}`;
-    
-    // Fallback copy method that works even when Clipboard API is blocked
-    const copyToClipboard = (text: string) => {
-      // Try modern API first
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text)
-          .then(() => {
-            toast.success('Enlace copiado al portapapeles');
-          })
-          .catch(() => {
-            // If modern API fails, use fallback
-            fallbackCopy(text);
-          });
-      } else {
-        // Use fallback if modern API not available
-        fallbackCopy(text);
-      }
-    };
-    
-    const fallbackCopy = (text: string) => {
-      const textArea = document.createElement('textarea');
-      textArea.value = text;
-      textArea.style.position = 'fixed';
-      textArea.style.left = '-999999px';
-      textArea.style.top = '-999999px';
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      
-      try {
-        document.execCommand('copy');
-        toast.success('Enlace copiado al portapapeles');
-      } catch (err) {
-        console.error('Error al copiar:', err);
-        toast.error('No se pudo copiar. Enlace: ' + text);
-      }
-      
-      document.body.removeChild(textArea);
-    };
-    
-    copyToClipboard(url);
-  };
+  const renderRaceConfigurator = () => {
+    const showFileUploader = editingStrategyId === null && (!currentRoute || currentRoute.isVirtual);
 
-  // Show HomePage or Planner based on viewMode
-  if (viewMode === 'home') {
     return (
-      <HomePage 
-        onCreateNew={() => {
-          // Reset al crear nueva estrategia
-          setEditingStrategyId(null);
-          setOriginalParams(null);
-          setStrategyName('');
-          setCurrentRoute(null);
-          setPaceData(null);
-          setViewMode('planner');
-        }}
-        onLoadStrategy={(strategy) => {
-          // Cargar todos los datos de la estrategia
-          setEditingStrategyId(strategy.id);
-          setStrategyName(strategy.name || '');
-          setTargetTime(strategy.targetTime || '00:45:00');
-          setIntervalType(strategy.intervalType || 'km');
-          setPacingStrategy(strategy.pacingStrategy || 0);
-          setClimbEffort(strategy.climbEffort || 0);
-          setSegmentLength(strategy.segmentLength || 0);
-          setPaceData(strategy.paceData);
-          
-          // Cargar la ruta si existe
-          if (strategy.routeData) {
-            setCurrentRoute(strategy.routeData);
-          }
-          
-          setViewMode('planner');
-          toast.success(`Estrategia "${strategy.name}" cargada`);
-          
-          // Guardar los parámetros originales
-          setOriginalParams({
-            targetTime: strategy.targetTime || '00:45:00',
-            intervalType: strategy.intervalType || 'km',
-            pacingStrategy: strategy.pacingStrategy || 0,
-            climbEffort: strategy.climbEffort || 0,
-            segmentLength: strategy.segmentLength || 0
-          });
-        }}
-        savedStrategies={savedStrategies}
-        onDeleteStrategy={handleDeleteStrategy}
-        onSelectRace={handleSelectRace}
-        loadingRaceId={loadingRaceId}
-      />
-    );
-  }
-
-  return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
@@ -476,7 +365,7 @@ export default function App() {
           </div>
           <Button
             variant="outline"
-            onClick={() => setViewMode('home')}
+            onClick={() => navigate('/home')}
           >
             <HomeIcon className="mr-2 h-4 w-4" />
             Inicio
@@ -504,18 +393,19 @@ export default function App() {
                 {nameError && <p className="text-sm text-destructive mt-1.5">{nameError}</p>}
               </div>
               
-              <div className="mb-2">
-      
-                <FileUploader 
-                  onFileProcessed={(route) => setCurrentRoute(route)}
-                  onRemoveRoute={() => {
-                    setCurrentRoute(null);
-                    setPaceData(null);
-                  }}
-                  isEditingStrategy={editingStrategyId !== null}
-                  hasRouteLoaded={currentRoute !== null && !currentRoute.isVirtual}
-                />
-              </div>
+              {showFileUploader && (
+                <div className="mb-2">
+                  <FileUploader 
+                    onFileProcessed={(route) => setCurrentRoute(route)}
+                    onRemoveRoute={() => {
+                      setCurrentRoute(null);
+                      setPaceData(null);
+                    }}
+                    isEditingStrategy={editingStrategyId !== null}
+                    hasRouteLoaded={currentRoute !== null && !currentRoute.isVirtual}
+                  />
+                </div>
+              )}
 
               {currentRoute && (
                 <div className="mb-[-16px] bg-muted rounded-lg border mt-[0px] mr-[0px] ml-[0px] p-[16px]">
@@ -529,18 +419,20 @@ export default function App() {
                 </div>
               )}
 
-              <ConfigurationPanel
-                targetTime={targetTime}
-                onTargetTimeChange={setTargetTime}
-                intervalType={intervalType}
-                onIntervalTypeChange={setIntervalType}
-                pacingStrategy={pacingStrategy}
-                onPacingStrategyChange={setPacingStrategy}
-                climbEffort={climbEffort}
-                onClimbEffortChange={setClimbEffort}
-                segmentLength={segmentLength}
-                onSegmentLengthChange={setSegmentLength}
-              />
+              {currentRoute && (
+                <ConfigurationPanel
+                  targetTime={targetTime}
+                  onTargetTimeChange={setTargetTime}
+                  intervalType={intervalType}
+                  onIntervalTypeChange={setIntervalType}
+                  pacingStrategy={pacingStrategy}
+                  onPacingStrategyChange={setPacingStrategy}
+                  climbEffort={climbEffort}
+                  onClimbEffortChange={setClimbEffort}
+                  segmentLength={segmentLength}
+                  onSegmentLengthChange={setSegmentLength}
+                />
+              )}
 
               {paceData && (
                 <Button 
@@ -578,6 +470,7 @@ export default function App() {
                     <RouteMap 
                       route={currentRoute}
                       paceData={paceData}
+                      hoverPoint={hoverPoint}
                     />
                   </Card>
                 )}
@@ -589,6 +482,8 @@ export default function App() {
                       <PaceChart 
                         paceData={paceData}
                         route={currentRoute}
+                        onHoverPoint={(point) => setHoverPoint(point)}
+                        onHoverEnd={() => setHoverPoint(null)}
                       />
                     </Card>
 
@@ -642,7 +537,70 @@ export default function App() {
         </AlertDialogContent>
       </AlertDialog>
       
-      <Toaster />
     </div>
+  );
+  };
+
+  return (
+    <>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <LandingPage
+              onGetStarted={() => navigate('/home')}
+              onViewDemo={() => navigate('/race-configurator')}
+            />
+          }
+        />
+        <Route
+          path="/home"
+          element={
+            <HomePage
+              onCreateNew={() => {
+                setEditingStrategyId(null);
+                setOriginalParams(null);
+                setStrategyName('');
+                setCurrentRoute(null);
+                setPaceData(null);
+                navigate('/race-configurator');
+              }}
+              onLoadStrategy={(strategy) => {
+                setEditingStrategyId(strategy.id);
+                setStrategyName(strategy.name || '');
+                setTargetTime(strategy.targetTime || '00:45:00');
+                setIntervalType(strategy.intervalType || 'km');
+                setPacingStrategy(strategy.pacingStrategy || 0);
+                setClimbEffort(strategy.climbEffort || 0);
+                setSegmentLength(strategy.segmentLength || 0);
+                setPaceData(strategy.paceData);
+
+                if (strategy.routeData) {
+                  setCurrentRoute(strategy.routeData);
+                }
+
+                navigate('/race-configurator');
+                toast.success(`Estrategia "${strategy.name}" cargada`);
+
+                setOriginalParams({
+                  targetTime: strategy.targetTime || '00:45:00',
+                  intervalType: strategy.intervalType || 'km',
+                  pacingStrategy: strategy.pacingStrategy || 0,
+                  climbEffort: strategy.climbEffort || 0,
+                  segmentLength: strategy.segmentLength || 0
+                });
+              }}
+              savedStrategies={savedStrategies}
+              onDeleteStrategy={handleDeleteStrategy}
+              onSelectRace={handleSelectRace}
+              loadingRaceId={loadingRaceId}
+            />
+          }
+        />
+        <Route path="/race-configurator" element={renderRaceConfigurator()} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <Toaster />
+    </>
   );
 }
