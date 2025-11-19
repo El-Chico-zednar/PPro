@@ -67,6 +67,7 @@ export function PaceTable({ paceData, intervalType }: PaceTableProps) {
               <TableRow className="bg-indigo-50">
                 <TableHead className="text-indigo-900">Intervalo</TableHead>
                 <TableHead className="text-indigo-900 text-right">Distancia</TableHead>
+                <TableHead className="text-indigo-900 text-right">Dist. acumulada</TableHead>
                 <TableHead className="text-indigo-900 text-right">Ritmo</TableHead>
                 <TableHead className="text-indigo-900 text-right">Tiempo</TableHead>
                 <TableHead className="text-indigo-900 text-right">Acumulado</TableHead>
@@ -76,6 +77,7 @@ export function PaceTable({ paceData, intervalType }: PaceTableProps) {
             <TableBody>
               {paceData.intervals.map((interval, index) => {
                 const distanceKm = interval.distance / 1000;
+                const cumulativeDistanceKm = interval.endDistance / 1000;
                 const netElevation = interval.elevationGain - interval.elevationLoss;
                 
                 return (
@@ -88,6 +90,9 @@ export function PaceTable({ paceData, intervalType }: PaceTableProps) {
                     </TableCell>
                     <TableCell className="text-right text-indigo-700">
                       {distanceKm.toFixed(2)} km
+                    </TableCell>
+                    <TableCell className="text-right text-indigo-900">
+                      {cumulativeDistanceKm.toFixed(2)} km
                     </TableCell>
                     <TableCell className="text-right text-indigo-900">
                       {secondsToPace(interval.pace)} /km

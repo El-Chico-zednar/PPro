@@ -17,6 +17,13 @@ interface PaceChartProps {
 }
 
 export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceChartProps) {
+  const formatMinutesToPace = (minutes: number) => {
+    const totalSeconds = Math.round(minutes * 60);
+    const paceMinutes = Math.floor(totalSeconds / 60);
+    const paceSeconds = totalSeconds % 60;
+    return `${paceMinutes}:${paceSeconds.toString().padStart(2, '0')}`;
+  };
+
   // Data por intervalo (para métricas y referencias)
   const intervalChartData = paceData.intervals.map((interval, index) => {
     const distanceKm = interval.endDistance / 1000;
@@ -44,6 +51,7 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
     const points = route.points;
     const intervals = paceData.intervals;
     let intervalIndex = 0;
+    let lastPaceMinutes: number | null = null;
 
     return points.map((point) => {
       while (
@@ -54,7 +62,16 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
       }
 
       const currentInterval = intervals[intervalIndex];
-      const paceMinutes = currentInterval ? currentInterval.pace / 60 : null;
+      const paceMinutes = currentInterval ? currentInterval.pace / 60 : lastPaceMinutes;
+      if (paceMinutes !== null) {
+        lastPaceMinutes = paceMinutes;
+      }
+
+      const displayIntervalIndex = currentInterval
+        ? currentInterval.index !== undefined
+          ? currentInterval.index + 1
+          : intervalIndex + 1
+        : null;
 
       return {
         distanceNum: point.distance / 1000,
@@ -63,57 +80,44 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
         lng: point.lng,
         elevation: point.elevation,
         pace: paceMinutes,
-        paceLabel: currentInterval ? secondsToPace(currentInterval.pace) : 'N/A',
-        intervalIndex: currentInterval?.index ?? null,
+        paceLabel: paceMinutes !== null ? formatMinutesToPace(paceMinutes) : 'N/A',
+        intervalIndex: displayIntervalIndex,
         elevationGain: currentInterval?.elevationGain ?? 0,
         elevationLoss: currentInterval?.elevationLoss ?? 0
       };
     });
   })();
 
-  const formatMinutesToPace = (minutes: number) => {
-    const totalSeconds = Math.round(minutes * 60);
-    const paceMinutes = Math.floor(totalSeconds / 60);
-    const paceSeconds = totalSeconds % 60;
-    return `${paceMinutes}:${paceSeconds.toString().padStart(2, '0')}`;
-  };
-
   // Custom tooltip
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       const hasIntervalInfo = data.intervalIndex !== undefined && data.intervalIndex !== null;
+      const ascent = data.elevationGain ?? 0;
+      const descent = data.elevationLoss ?? 0;
+      const distanceKm = data.distanceNum ?? 0;
       return (
-        <div className="bg-white p-3 border-2 border-indigo-200 rounded-lg shadow-lg">
-          {hasIntervalInfo && (
-            <p className="text-sm text-indigo-900 mb-1">
-              <strong>Intervalo {data.intervalIndex}</strong>
-            </p>
-          )}
-          {data.distance && (
-            <p className="text-xs text-indigo-700">
-              Distancia: {data.distance} km
-            </p>
-          )}
+        <div className="bg-white p-3 border-2 border-indigo-200 rounded-lg shadow-lg min-w-[180px]">
           <p className="text-xs text-indigo-700">
-            Distancia acumulada: {data.distanceNum?.toFixed(2)} km
-          </p>
-          <p className="text-xs text-indigo-700">
-            Ritmo: {data.paceLabel} min/km
+            Distancia: {data.distance} km
           </p>
           <p className="text-xs text-indigo-700">
             Altitud: {data.elevation.toFixed(0)} m
           </p>
-          {data.elevationGain > 0 && (
-            <p className="text-xs text-green-600">
-              Ascenso: +{data.elevationGain.toFixed(0)} m
+          {hasIntervalInfo && (
+            <p className="text-sm text-indigo-900 mb-1 font-semibold">
+              Intervalo {data.intervalIndex}
             </p>
           )}
-          {data.elevationLoss > 0 && (
-            <p className="text-xs text-red-600">
-              Descenso: -{data.elevationLoss.toFixed(0)} m
-            </p>
-          )}
+          <p className="text-xs text-indigo-900">
+            Ritmo: {data.paceLabel} min/km
+          </p>
+          <p className="text-xs text-green-600">
+            Ascenso: {ascent > 0 ? `+${ascent.toFixed(0)}` : `${ascent.toFixed(0)}`} m
+          </p>
+          <p className="text-xs text-red-600">
+            Descenso: {descent > 0 ? `-${descent.toFixed(0)}` : `${(-descent).toFixed(0)}`} m
+          </p>
         </div>
       );
     }
@@ -192,6 +196,7 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
               strokeWidth={3}
               dot={false}
               activeDot={false}
+              connectNulls
               name="Ritmo"
             />
           </ComposedChart>
