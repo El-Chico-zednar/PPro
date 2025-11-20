@@ -33,34 +33,11 @@ export function PaceTable({ paceData, intervalType }: PaceTableProps) {
     return 'text-gray-600';
   };
 
+
   return (
     <div className="space-y-4">
-      {/* Summary Row */}
-      <div className="bg-indigo-100 p-4 rounded-lg">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-          <div>
-            <div className="text-xs text-indigo-600 mb-1">Tiempo Total</div>
-            <div className="text-indigo-900">{secondsToTime(paceData.totalTime)}</div>
-          </div>
-          <div>
-            <div className="text-xs text-indigo-600 mb-1">Ritmo Promedio</div>
-            <div className="text-indigo-900">{secondsToPace(paceData.averagePace)} /km</div>
-          </div>
-          <div>
-            <div className="text-xs text-indigo-600 mb-1">Distancia Total</div>
-            <div className="text-indigo-900">
-              {(paceData.intervals.reduce((sum, i) => sum + i.distance, 0) / 1000).toFixed(2)} km
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-indigo-600 mb-1">Intervalos</div>
-            <div className="text-indigo-900">{paceData.intervals.length}</div>
-          </div>
-        </div>
-      </div>
-
       {/* Table */}
-      <div className="border border-indigo-200 rounded-lg overflow-hidden">
+      <div className="overflow-hidden rounded-xl">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -117,11 +94,6 @@ export function PaceTable({ paceData, intervalType }: PaceTableProps) {
             </TableBody>
           </Table>
         </div>
-      </div>
-
-      {/* Export/Print Button */}
-      <div className="text-xs text-indigo-600 text-center pt-2">
-        Usa esta tabla como guía durante tu carrera. Puedes tomar captura de pantalla o imprimirla.
       </div>
     </div>
   );
