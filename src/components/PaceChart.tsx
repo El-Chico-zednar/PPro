@@ -28,7 +28,7 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
   const intervalChartData = paceData.intervals.map((interval, index) => {
     const distanceKm = interval.endDistance / 1000;
     const paceMinPerKm = interval.pace / 60;
-    
+
     return {
       index: index + 1,
       intervalIndex: index + 1,
@@ -38,7 +38,9 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
       paceLabel: secondsToPace(interval.pace),
       elevation: interval.endPoint.elevation,
       elevationGain: interval.elevationGain,
-      elevationLoss: interval.elevationLoss
+      elevationLoss: interval.elevationLoss,
+      lat: interval.endPoint.lat,
+      lng: interval.endPoint.lng
     };
   });
 
@@ -95,7 +97,6 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
       const hasIntervalInfo = data.intervalIndex !== undefined && data.intervalIndex !== null;
       const ascent = data.elevationGain ?? 0;
       const descent = data.elevationLoss ?? 0;
-      const distanceKm = data.distanceNum ?? 0;
       return (
         <div className="bg-white p-3 border-2 border-indigo-200 rounded-lg shadow-lg min-w-[180px]">
           <p className="text-xs text-indigo-700">
@@ -145,36 +146,39 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-sm text-indigo-700 mb-3">Ritmo y Altitud por Distancia</h3>
+
         <ResponsiveContainer width="100%" height={260}>
-          <ComposedChart 
+          <ComposedChart
             data={combinedChartData}
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
+            margin={{ top: 10, right: 0, left: -10, bottom: 0 }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
             <XAxis
               dataKey="distanceNum"
               stroke="#6366f1"
               tick={{ fontSize: 12 }}
-              label={{ value: 'Distancia (km)', position: 'insideBottom', offset: -5, fill: '#6366f1' }}
-              tickFormatter={(value) => value.toFixed(1)}
+              ticks={Array.from({ length: Math.floor(route.totalDistance / 1000) + 1 }, (_, i) => i)}
+              tickFormatter={(value) => value.toFixed(0)}
+              domain={[0, 'dataMax']}
+              type="number"
             />
             <YAxis
               yAxisId="elevation"
               stroke="#6366f1"
               tick={{ fontSize: 12 }}
-              label={{ value: 'Altitud (m)', angle: -90, position: 'insideLeft', fill: '#6366f1' }}
               hide={route.isVirtual}
+              width={40}
             />
             <YAxis
               yAxisId="pace"
               orientation="right"
               stroke="#111827"
               tick={{ fontSize: 12, fill: '#111827' }}
-              label={{ value: 'Ritmo (min/km)', angle: 90, position: 'insideRight', fill: '#111827' }}
               domain={['auto', 'auto']}
               tickFormatter={formatMinutesToPace}
+              width={40}
             />
             <Tooltip content={<CustomTooltip />} />
             {!route.isVirtual && (
@@ -186,6 +190,7 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
                 stroke="#4f46e5"
                 strokeWidth={2}
                 name="Altitud"
+                animationDuration={500}
               />
             )}
             <Line
@@ -198,6 +203,7 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
               activeDot={false}
               connectNulls
               name="Ritmo"
+              animationDuration={500}
             />
           </ComposedChart>
         </ResponsiveContainer>

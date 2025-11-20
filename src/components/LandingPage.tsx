@@ -1,11 +1,11 @@
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { 
-  Upload, 
-  TrendingUp, 
-  Map, 
-  Clock, 
-  Settings, 
+import {
+  Upload,
+  TrendingUp,
+  Map,
+  Clock,
+  Settings,
   Zap,
   ArrowRight
 } from 'lucide-react';
@@ -32,7 +32,7 @@ export function LandingPage({ onGetStarted, onViewDemo }: LandingPageProps) {
               </p>
             </div>
             <p className="text-base md:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Sube tu recorrido, define tu objetivo y recibe un plan detallado con ritmos, 
+              Sube tu recorrido, define tu objetivo y recibe un plan detallado con ritmos,
               tiempos y recomendaciones para conquistar tu próxima carrera.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
@@ -69,7 +69,7 @@ export function LandingPage({ onGetStarted, onViewDemo }: LandingPageProps) {
                 </div>
                 <h3 className="text-xl md:text-2xl font-semibold">Cálculo Inteligente</h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  Calcula ritmos óptimos teniendo en cuenta desnivel, distancia e intensidad 
+                  Calcula ritmos óptimos teniendo en cuenta desnivel, distancia e intensidad
                   deseada para cada sección del recorrido.
                 </p>
               </Card>
@@ -80,7 +80,7 @@ export function LandingPage({ onGetStarted, onViewDemo }: LandingPageProps) {
                 </div>
                 <h3 className="text-xl md:text-2xl font-semibold">Visualiza Cada Kilómetro</h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  Explora mapas interactivos, gráficos de altimetría y tablas detalladas 
+                  Explora mapas interactivos, gráficos de altimetría y tablas detalladas
                   para entender cada segmento de tu carrera.
                 </p>
               </Card>
@@ -91,7 +91,7 @@ export function LandingPage({ onGetStarted, onViewDemo }: LandingPageProps) {
                 </div>
                 <h3 className="text-xl md:text-2xl font-semibold">Control Total del Tiempo</h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  Define objetivos de tiempo, ajusta estrategias de split negativos o positivos 
+                  Define objetivos de tiempo, ajusta estrategias de split negativos o positivos
                   y obtén ritmos personalizados.
                 </p>
               </Card>
@@ -200,8 +200,8 @@ export function LandingPage({ onGetStarted, onViewDemo }: LandingPageProps) {
               Comienza a planificar tu próxima carrera ahora mismo
             </p>
             <div className="pt-4">
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 variant="secondary"
                 onClick={onGetStarted}
                 className="text-base md:text-lg px-8 py-6"
