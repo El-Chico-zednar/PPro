@@ -62,7 +62,7 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
       if (!mounted) return;
       return import('leaflet');
     }).then((LeafletModule) => {
-      if (!mounted || !mapContainerRef.current) return;
+      if (!LeafletModule || !mounted || !mapContainerRef.current) return;
 
       // Fix Leaflet default icon issue
       delete (LeafletModule.Icon.Default.prototype as any)._getIconUrl;
@@ -250,6 +250,45 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
     }, 100);
   }, [leafletReady, route, paceData]);
 
+  // Handle zoom levels for marker visibility
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !paceData) return;
+
+    const updateMarkers = () => {
+      const zoom = map.getZoom();
+      const markers = markersRef.current;
+
+      // Start and Finish markers are always visible (indices 0 and 1)
+      // Interval markers start at index 2
+      const intervalMarkers = markers.slice(2);
+
+      let step = 1;
+      if (zoom < 13) step = 5;
+      else if (zoom < 15) step = 2;
+
+      intervalMarkers.forEach((marker, index) => {
+        // Interval numbers are 1-based (index + 1)
+        const intervalNumber = index + 1;
+        const shouldShow = intervalNumber % step === 0;
+
+        if (shouldShow) {
+          if (!map.hasLayer(marker)) map.addLayer(marker);
+        } else {
+          if (map.hasLayer(marker)) map.removeLayer(marker);
+        }
+      });
+    };
+
+    map.on('zoomend', updateMarkers);
+    // Initial update
+    updateMarkers();
+
+    return () => {
+      map.off('zoomend', updateMarkers);
+    };
+  }, [leafletReady, paceData]);
+
   useEffect(() => {
     const L = (window as any).L;
     if (!L || !mapRef.current) return;
@@ -300,7 +339,7 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
   return (
     <div className="space-y-4 relative">
       {isLoading && (
-        <div className="w-full h-[400px] rounded-lg border-2 border-indigo-100 bg-indigo-50 flex items-center justify-center">
+        <div className="w-full h-[400px] rounded-xl border bg-indigo-50 flex items-center justify-center">
           <div className="text-indigo-400">Cargando mapa...</div>
         </div>
       )}
@@ -314,7 +353,6 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
             background-size: 18px 18px !important;
             background-color: white;
             border-radius: 4px;
-            border: 2px solid rgba(0,0,0,0.1);
           }
           .leaflet-touch .leaflet-control-layers-toggle {
             width: 30px !important;
@@ -327,7 +365,7 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
       <div className="relative w-full h-[400px]">
         <div
           ref={mapContainerRef}
-          className={`w-full h-full rounded-lg border-2 border-indigo-100 ${isLoading ? 'hidden' : 'block'}`}
+          className={`w-full h-full rounded-xl ${isLoading ? 'hidden' : 'block'}`}
           style={{ minHeight: '400px', height: '400px', width: '100%' }}
           id="route-map"
         />

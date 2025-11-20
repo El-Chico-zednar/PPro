@@ -16,9 +16,9 @@ import { supabase, GPX_BUCKET } from './supabase/client';
 import { parseGPX, parseTCX } from './utils/gpxParser';
 import { RouteData, PaceStrategy, IntervalType } from './types/pace';
 import { SavedStrategy } from './types/strategy';
-import { Play, Save, Home as HomeIcon, RotateCcw } from 'lucide-react';
+import { Play, Save, RotateCcw } from 'lucide-react';
 import { Button } from './components/ui/button';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { Toaster } from './components/ui/sonner';
 import {
   AlertDialog,
@@ -357,27 +357,26 @@ export default function App() {
     return (
       <div className="min-h-screen bg-background p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8 flex items-center justify-between">
-            <div>
-              <h1 className="mb-2">PacePro Running Planner</h1>
-              <p className="text-muted-foreground">Planifica tu estrategia de ritmo perfecta para tu próxima carrera</p>
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => navigate('/home')}
-            >
-              <HomeIcon className="mr-2 h-4 w-4" />
-              Inicio
-            </Button>
-          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Panel - Configuration */}
             <div className="lg:col-span-1">
-              <Card className="p-6">
+              {/* Logo */}
+              <div className="mb-6">
+                <button
+                  onClick={() => navigate('/home')}
+                  className="cursor-pointer inline-block bg-transparent border-0 p-0 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded"
+                  aria-label="Ir a la página de inicio"
+                >
+                  <svg width="250" height="53" viewBox="0 0 250 53" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M33.527 0H250L216.473 53H0L33.527 0Z" fill="#797979" />
+                  </svg>
+                </button>
+              </div>
 
-                <div className="m-[0px]">
+              <div>
+
+                <div className="mb-4">
                   <Label htmlFor="strategy-name">Nombre de la Estrategia</Label>
                   <Input
                     id="strategy-name"
@@ -408,7 +407,7 @@ export default function App() {
                 )}
 
                 {currentRoute && (
-                  <div className="mb-[-16px] bg-muted rounded-lg border mt-[0px] mr-[0px] ml-[0px] p-[16px]">
+                  <div className="my-4 bg-white rounded-lg border p-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium">{currentRoute.name}</span>
                     </div>
@@ -438,7 +437,7 @@ export default function App() {
                   <Button
                     onClick={handleSaveStrategy}
                     variant="outline"
-                    className="w-full mt-[-16px] mr-[0px] mb-[0px] ml-[0px]"
+                    className="w-full mt-4"
                     disabled={editingStrategyId !== null && !hasParameterChanges}
                   >
                     <Save className="mr-2 h-4 w-4" />
@@ -456,7 +455,7 @@ export default function App() {
                     Restablecer Cambios
                   </Button>
                 )}
-              </Card>
+              </div>
             </div>
 
             {/* Right Panel - Results */}
@@ -487,7 +486,7 @@ export default function App() {
                         />
                       </Card>
 
-                      <Card className="p-6">
+                      <Card className="p-0">
 
                         <PaceTable
                           paceData={paceData}

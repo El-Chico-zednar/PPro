@@ -1,6 +1,6 @@
 import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart } from 'recharts';
 import { RouteData, PaceStrategy } from '../types/pace';
-import { secondsToPace } from '../utils/paceCalculations';
+import { secondsToPace, secondsToTime } from '../utils/paceCalculations';
 
 interface HoverPoint {
   lat: number;
@@ -98,7 +98,7 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
       const ascent = data.elevationGain ?? 0;
       const descent = data.elevationLoss ?? 0;
       return (
-        <div className="bg-white p-3 border-2 border-indigo-200 rounded-lg shadow-lg min-w-[180px]">
+        <div className="bg-white p-3 border rounded-lg shadow-lg min-w-[180px]">
           <p className="text-xs text-indigo-700">
             Distancia: {data.distance} km
           </p>
@@ -209,22 +209,38 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
         </ResponsiveContainer>
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-3 gap-4 mt-4">
-        <div className="bg-indigo-50 p-3 rounded-lg">
-          <div className="text-xs text-indigo-600 mb-1">Ritmo Promedio</div>
-          <div className="text-indigo-900">{secondsToPace(paceData.averagePace)} /km</div>
-        </div>
-        <div className="bg-green-50 p-3 rounded-lg">
-          <div className="text-xs text-green-600 mb-1">Ritmo Más Rápido</div>
-          <div className="text-green-900">
-            {secondsToPace(Math.min(...paceData.intervals.map(i => i.pace)))} /km
+      {/* Summary Row */}
+      <div className="bg-indigo-100 p-4 rounded-lg mt-4">
+        <div className="flex flex-wrap justify-between gap-4 text-center">
+          <div>
+            <div className="text-xs text-indigo-600 mb-1">Tiempo Total</div>
+            <div className="text-indigo-900">{secondsToTime(paceData.totalTime)}</div>
           </div>
-        </div>
-        <div className="bg-orange-50 p-3 rounded-lg">
-          <div className="text-xs text-orange-600 mb-1">Ritmo Más Lento</div>
-          <div className="text-orange-900">
-            {secondsToPace(Math.max(...paceData.intervals.map(i => i.pace)))} /km
+          <div>
+            <div className="text-xs text-indigo-600 mb-1">Distancia Total</div>
+            <div className="text-indigo-900">
+              {(paceData.intervals.reduce((sum, i) => sum + i.distance, 0) / 1000).toFixed(2)} km
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-indigo-600 mb-1">Ritmo Promedio</div>
+            <div className="text-indigo-900">{secondsToPace(paceData.averagePace)} /km</div>
+          </div>
+          <div>
+            <div className="text-xs text-green-600 mb-1">Ritmo Más Rápido</div>
+            <div className="text-green-900">
+              {secondsToPace(Math.min(...paceData.intervals.map(i => i.pace)))} /km
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-orange-600 mb-1">Ritmo Más Lento</div>
+            <div className="text-orange-900">
+              {secondsToPace(Math.max(...paceData.intervals.map(i => i.pace)))} /km
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-indigo-600 mb-1">Intervalos</div>
+            <div className="text-indigo-900">{paceData.intervals.length}</div>
           </div>
         </div>
       </div>
