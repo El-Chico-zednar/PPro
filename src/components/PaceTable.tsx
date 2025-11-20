@@ -79,9 +79,9 @@ export function PaceTable({ paceData, intervalType }: PaceTableProps) {
                 const distanceKm = interval.distance / 1000;
                 const cumulativeDistanceKm = interval.endDistance / 1000;
                 const netElevation = interval.elevationGain - interval.elevationLoss;
-                
+
                 return (
-                  <TableRow 
+                  <TableRow
                     key={index}
                     className="hover:bg-indigo-50 transition-colors"
                   >

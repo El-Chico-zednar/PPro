@@ -40,10 +40,10 @@ export function HomePage({ onCreateNew, onLoadStrategy, savedStrategies, onDelet
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return dateString;
-    return date.toLocaleDateString('es-ES', { 
-      day: 'numeric', 
-      month: 'short', 
-      year: 'numeric' 
+    return date.toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
     });
   };
 
@@ -135,7 +135,7 @@ export function HomePage({ onCreateNew, onLoadStrategy, savedStrategies, onDelet
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center gap-1 mb-3">
                         <Clock className="h-3 w-3 text-muted-foreground" />
                         <span className="text-xs text-muted-foreground">
@@ -173,7 +173,7 @@ export function HomePage({ onCreateNew, onLoadStrategy, savedStrategies, onDelet
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction 
+                              <AlertDialogAction
                                 onClick={() => onDeleteStrategy(strategy.id)}
                               >
                                 Eliminar
@@ -213,7 +213,7 @@ export function HomePage({ onCreateNew, onLoadStrategy, savedStrategies, onDelet
                         <Calendar className="h-3 w-3 text-muted-foreground" />
                         <span className="text-xs text-muted-foreground">{race.date}</span>
                       </div>
-                      
+
                       <div className="flex flex-wrap gap-2 mb-3">
                         <Badge variant="secondary" className="text-xs">
                           {race.distance}
@@ -223,8 +223,8 @@ export function HomePage({ onCreateNew, onLoadStrategy, savedStrategies, onDelet
                         </Badge>
                       </div>
 
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         className="w-full"
                         disabled={isLoadingRaces || !onSelectRace}
                         onClick={() => onSelectRace?.(race)}

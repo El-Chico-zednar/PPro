@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { RouteData, PaceStrategy } from '../types/pace';
-import { Navigation } from 'lucide-react';
+
 
 interface HoverPoint {
   lat: number;
@@ -27,7 +27,7 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
   // Load Leaflet CSS and library
   useEffect(() => {
     let mounted = true;
-    
+
     // Load Leaflet CSS first
     const loadCSS = () => {
       return new Promise<void>((resolve) => {
@@ -35,27 +35,27 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
           resolve();
           return;
         }
-        
+
         const link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
         link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
         link.crossOrigin = '';
-        
+
         link.onload = () => resolve();
         link.onerror = () => resolve(); // Continue even if CSS fails
-        
+
         document.head.appendChild(link);
-        
+
         // Fallback timeout
         setTimeout(() => resolve(), 1000);
       });
     };
-    
+
     // Load CSS then Leaflet library
     loadCSS().then(() => {
       if (!mounted) return;
-      
+
       // Wait a bit for CSS to be fully applied
       return new Promise(resolve => setTimeout(resolve, 100));
     }).then(() => {
@@ -74,7 +74,7 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
 
       // Store Leaflet module globally for access
       (window as any).L = LeafletModule;
-      
+
       setLeafletReady(true);
       setIsLoading(false);
     }).catch(err => {
@@ -111,13 +111,41 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
         13
       );
 
-      // Add tile layer
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      // Define layers
+      const light = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
         maxZoom: 19,
         minZoom: 1,
         crossOrigin: true
-      }).addTo(map);
+      });
+
+      const dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        maxZoom: 19,
+        minZoom: 1,
+        crossOrigin: true
+      });
+
+      const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+      });
+
+      const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      });
+
+      // Add default
+      light.addTo(map);
+
+      // Add control
+      const baseMaps = {
+        "Claro": light,
+        "Oscuro": dark,
+        "Satélite": satellite,
+        "Estándar": osm
+      };
+
+      L.control.layers(baseMaps).addTo(map);
 
       mapRef.current = map;
 
@@ -131,6 +159,8 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
       console.error('Error initializing map:', err);
     }
   }, [leafletReady, route.points]);
+
+
 
   // Update route and markers when data changes
   useEffect(() => {
@@ -188,19 +218,19 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
     // Add interval markers if pace data available
     if (paceData) {
       paceData.intervals.forEach((interval, index) => {
-        if (index === 0 || index === paceData.intervals.length - 1) return; // Skip start and finish
-        
+        if (index === paceData.intervals.length - 1) return; // Skip finish marker (already shown)
+
         const markerIcon = L.divIcon({
           html: `<div style="background-color: white; padding: 2px 6px; border-radius: 4px; border: 2px solid #6366f1; font-size: 10px; font-weight: bold; color: #4f46e5;">${index + 1}</div>`,
           className: '',
           iconSize: [30, 20],
           iconAnchor: [15, 10]
         });
-        
+
         const marker = L.marker([interval.endPoint.lat, interval.endPoint.lng], {
           icon: markerIcon
         }).addTo(mapRef.current);
-        
+
         markersRef.current.push(marker);
       });
     }
@@ -211,7 +241,7 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
         padding: [30, 30]
       });
     }
-    
+
     // Force map to recalculate size
     setTimeout(() => {
       if (mapRef.current) {
@@ -254,7 +284,7 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
   }, [hoverPoint]);
 
   // Cleanup on unmount
-useEffect(() => {
+  useEffect(() => {
     return () => {
       if (hoverMarkerRef.current && mapRef.current) {
         mapRef.current.removeLayer(hoverMarkerRef.current);
@@ -268,32 +298,41 @@ useEffect(() => {
   }, []);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative">
       {isLoading && (
         <div className="w-full h-[400px] rounded-lg border-2 border-indigo-100 bg-indigo-50 flex items-center justify-center">
           <div className="text-indigo-400">Cargando mapa...</div>
         </div>
       )}
-      <div 
-        ref={mapContainerRef}
-        className={`w-full h-[400px] rounded-lg border-2 border-indigo-100 ${isLoading ? 'hidden' : 'block'}`}
-        style={{ minHeight: '400px', height: '400px', width: '100%' }}
-        id="route-map"
-      />
-      
-      <div className="flex items-center justify-between text-sm text-indigo-600 bg-indigo-50 p-3 rounded-lg">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-          <span>Salida</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-red-500 rounded-full border-2 border-white"></div>
-          <span>Meta</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Navigation className="h-4 w-4 text-indigo-600" />
-          <span>{(route.totalDistance / 1000).toFixed(2)} km</span>
-        </div>
+
+      <style>
+        {`
+          .leaflet-control-layers-toggle {
+            width: 30px !important;
+            height: 30px !important;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%234b5563' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='3 6 9 3 15 6 21 3 21 21 15 18 9 21 3 18 3 6' /%3E%3Cline x1='9' y1='3' x2='9' y2='21' /%3E%3Cline x1='15' y1='6' x2='15' y2='18' /%3E%3C/svg%3E") !important;
+            background-size: 18px 18px !important;
+            background-color: white;
+            border-radius: 4px;
+            border: 2px solid rgba(0,0,0,0.1);
+          }
+          .leaflet-touch .leaflet-control-layers-toggle {
+            width: 30px !important;
+            height: 30px !important;
+            background-size: 18px 18px !important;
+          }
+        `}
+      </style>
+
+      <div className="relative w-full h-[400px]">
+        <div
+          ref={mapContainerRef}
+          className={`w-full h-full rounded-lg border-2 border-indigo-100 ${isLoading ? 'hidden' : 'block'}`}
+          style={{ minHeight: '400px', height: '400px', width: '100%' }}
+          id="route-map"
+        />
+
+
       </div>
     </div>
   );

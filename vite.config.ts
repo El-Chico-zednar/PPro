@@ -22,7 +22,7 @@ function removeVersionSpecifiers(): Plugin {
 
     resolveId(id: string, importer) {
       if (VERSION_PATTERN.test(id)) {
-        const cleanId= id.replace(VERSION_PATTERN, '');
+        const cleanId = id.replace(VERSION_PATTERN, '');
         return this.resolve(cleanId, importer, { skipSelf: true });
       }
       return null;
@@ -56,10 +56,10 @@ const produceSingleFile = process.env.SINGLE_FILE === 'true'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    react(), 
-    tailwindcss(), 
-    figmaAssetsResolver(), 
-    removeVersionSpecifiers(), 
+    react(),
+    tailwindcss(),
+    figmaAssetsResolver(),
+    removeVersionSpecifiers(),
     ...(produceSingleFile ? [viteSingleFile()] : [])
   ],
 })
