@@ -94,12 +94,11 @@ export function HomePage({ onCreateNew, onLoadStrategy, savedStrategies, onDelet
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
+        {/* Logo */}
         <div className="mb-8">
-          <h1 className="mb-2">PacePro Running Planner</h1>
-          <p className="text-muted-foreground">
-            Planifica tu estrategia de ritmo perfecta para tu próxima carrera
-          </p>
+          <svg width="250" height="53" viewBox="0 0 250 53" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M33.527 0H250L216.473 53H0L33.527 0Z" fill="#797979" />
+          </svg>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

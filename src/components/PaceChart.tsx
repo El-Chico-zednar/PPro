@@ -98,7 +98,7 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
       const ascent = data.elevationGain ?? 0;
       const descent = data.elevationLoss ?? 0;
       return (
-        <div className="bg-white p-3 border rounded-lg shadow-lg min-w-[180px]">
+        <div className="bg-white p-3 border rounded-lg shadow-lg min-w-[180px]" style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
           <p className="text-xs text-indigo-700">
             Distancia: {data.distance} km
           </p>
@@ -158,7 +158,7 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
             <XAxis
               dataKey="distanceNum"
               stroke="#6366f1"
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: 12, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}
               ticks={Array.from({ length: Math.floor(route.totalDistance / 1000) + 1 }, (_, i) => i)}
               tickFormatter={(value) => value.toFixed(0)}
               domain={[0, 'dataMax']}
@@ -167,7 +167,7 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
             <YAxis
               yAxisId="elevation"
               stroke="#6366f1"
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: 12, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}
               hide={route.isVirtual}
               width={40}
             />
@@ -175,7 +175,7 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
               yAxisId="pace"
               orientation="right"
               stroke="#111827"
-              tick={{ fontSize: 12, fill: '#111827' }}
+              tick={{ fontSize: 12, fill: '#111827', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}
               domain={['auto', 'auto']}
               tickFormatter={formatMinutesToPace}
               width={40}
@@ -210,7 +210,7 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
       </div>
 
       {/* Summary Row */}
-      <div className="bg-indigo-100 p-4 rounded-lg mt-4">
+      <div className="bg-indigo-100 p-4 rounded-lg mt-4" style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
         <div className="flex flex-wrap justify-between gap-4 text-center">
           <div>
             <div className="text-xs text-indigo-600 mb-1">Tiempo Total</div>

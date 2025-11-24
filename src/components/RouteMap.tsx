@@ -220,11 +220,13 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
       paceData.intervals.forEach((interval, index) => {
         if (index === paceData.intervals.length - 1) return; // Skip finish marker (already shown)
 
+        const digits = (index + 1).toString().length;
+        const width = digits === 1 ? 20 : 30;
         const markerIcon = L.divIcon({
-          html: `<div style="background-color: white; padding: 2px 6px; border-radius: 4px; border: 2px solid #6366f1; font-size: 10px; font-weight: bold; color: #4f46e5;">${index + 1}</div>`,
+          html: `<div style="background-color: white; padding: 2px 4px; border-radius: 4px; border: 2px solid #6366f1; font-size: 10px; font-weight: bold; color: #4f46e5; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; min-width: ${width - 8}px; text-align: center; display: inline-block;">${index + 1}</div>`,
           className: '',
-          iconSize: [30, 20],
-          iconAnchor: [15, 10]
+          iconSize: [width, 20],
+          iconAnchor: [width / 2, 10]
         });
 
         const marker = L.marker([interval.endPoint.lat, interval.endPoint.lng], {
@@ -358,6 +360,31 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
             width: 30px !important;
             height: 30px !important;
             background-size: 18px 18px !important;
+          }
+          /* Ensure map stays below modals */
+          .leaflet-container {
+            z-index: 1 !important;
+          }
+          .leaflet-pane {
+            z-index: auto !important;
+          }
+          .leaflet-tile-pane {
+            z-index: 200 !important;
+          }
+          .leaflet-overlay-pane {
+            z-index: 400 !important;
+          }
+          .leaflet-shadow-pane {
+            z-index: 500 !important;
+          }
+          .leaflet-marker-pane {
+            z-index: 600 !important;
+          }
+          .leaflet-tooltip-pane {
+            z-index: 650 !important;
+          }
+          .leaflet-popup-pane {
+            z-index: 700 !important;
           }
         `}
       </style>
