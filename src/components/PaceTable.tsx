@@ -9,7 +9,7 @@ interface PaceTableProps {
 }
 
 export function PaceTable({ paceData, intervalType }: PaceTableProps) {
-  const getIntervalLabel = (index: number, distance: number): string => {
+  const getIntervalLabel = (index: number): string => {
     if (intervalType === 'km') {
       return `${index + 1} km`;
     } else if (intervalType === 'mile') {
@@ -35,7 +35,7 @@ export function PaceTable({ paceData, intervalType }: PaceTableProps) {
 
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
       {/* Table */}
       <div className="overflow-hidden rounded-xl">
         <div className="overflow-x-auto">
@@ -63,7 +63,7 @@ export function PaceTable({ paceData, intervalType }: PaceTableProps) {
                     className="hover:bg-indigo-50 transition-colors"
                   >
                     <TableCell className="text-indigo-900">
-                      {getIntervalLabel(index, interval.endDistance)}
+                      {getIntervalLabel(index)}
                     </TableCell>
                     <TableCell className="text-right text-indigo-700">
                       {distanceKm.toFixed(2)} km

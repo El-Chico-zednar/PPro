@@ -449,7 +449,7 @@ export default function App() {
                   <Button
                     onClick={handleResetChanges}
                     variant="outline"
-                    className="w-full mt-[-16px] mr-[0px] mb-[0px] ml-[0px]"
+                    className="w-full mt-2"
                   >
                     <RotateCcw className="mr-2 h-4 w-4" />
                     Restablecer Cambios
