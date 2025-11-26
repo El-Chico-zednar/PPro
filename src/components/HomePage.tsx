@@ -4,6 +4,8 @@ import { supabase } from '../supabase/client';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { Input } from './ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +25,9 @@ export interface PopularRace {
   distance: string;
   location: string;
   date: string;
+  event_date?: string | null;
   elevation?: string | number | null;
+  surface?: string | null;
   gpx_storage_path?: string | null;
 }
 
@@ -50,6 +54,10 @@ export function HomePage({ onCreateNew, onLoadStrategy, savedStrategies, onDelet
   const [popularRaces, setPopularRaces] = useState<PopularRace[]>([]);
   const [racesError, setRacesError] = useState<string | null>(null);
   const [isLoadingRaces, setIsLoadingRaces] = useState(false);
+  const [sortBy, setSortBy] = useState<'date' | 'elevation'>('date');
+  const [filterDistance, setFilterDistance] = useState<string>('all');
+  const [filterSurface, setFilterSurface] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
     const loadRaces = async () => {
@@ -60,13 +68,13 @@ export function HomePage({ onCreateNew, onLoadStrategy, savedStrategies, onDelet
 
       setIsLoadingRaces(true);
       const { data, error } = await supabase
-        .from('race_tracks')
-        .select('id, name, distance_km, elevation_gain, location, event_date, gpx_storage_path')
+        .from('race_tracks_duplicate')
+        .select('id, name, distance_km, elevation_gain, location, event_date, gpx_storage_path, surface')
         .order('event_date', { ascending: true });
 
       if (error) {
         console.error('Error cargando carreras populares:', error);
-        setRacesError('No se pudieron cargar las carreras populares desde Supabase.');
+        setRacesError('No se pudieron cargar las carreras populares.');
         setIsLoadingRaces(false);
         return;
       }
@@ -76,10 +84,12 @@ export function HomePage({ onCreateNew, onLoadStrategy, savedStrategies, onDelet
           data.map((race) => ({
             ...race,
             name: race.name || 'Sin nombre',
-            distance: race.distance_km ? `${race.distance_km} km` : 'Sin distancia',
-            elevation: race.elevation_gain !== null && race.elevation_gain !== undefined ? `+${race.elevation_gain}m` : 'Sin desnivel',
+            distance: race.distance_km || 'Sin distancia',
+            elevation: race.elevation_gain !== null && race.elevation_gain !== undefined ? `+${race.elevation_gain}m` : null,
+            surface: race.surface || null,
             location: race.location || 'Sin ubicación',
             date: race.event_date ? formatDate(race.event_date) : 'Sin fecha',
+            event_date: race.event_date, // Mantener fecha original para ordenamiento
           }))
         );
       }
@@ -88,6 +98,44 @@ export function HomePage({ onCreateNew, onLoadStrategy, savedStrategies, onDelet
 
     loadRaces();
   }, []);
+
+  // Filtrar y ordenar carreras
+  const filteredAndSortedRaces = popularRaces
+    .filter(race => {
+      // Filtro por búsqueda de texto
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        const matchesName = race.name.toLowerCase().includes(query);
+        const matchesLocation = race.location.toLowerCase().includes(query);
+        if (!matchesName && !matchesLocation) {
+          return false;
+        }
+      }
+      // Filtro por distancia
+      if (filterDistance !== 'all' && race.distance !== filterDistance) {
+        return false;
+      }
+      // Filtro por superficie
+      if (filterSurface !== 'all' && race.surface !== filterSurface) {
+        return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'date') {
+        // Ordenar por fecha próxima usando event_date original
+        if (!a.event_date) return 1;
+        if (!b.event_date) return -1;
+        const dateA = new Date(a.event_date);
+        const dateB = new Date(b.event_date);
+        return dateA.getTime() - dateB.getTime();
+      } else {
+        // Ordenar por menor desnivel
+        const elevA = typeof a.elevation === 'string' ? parseInt(a.elevation.replace(/\D/g, '')) || 0 : (a.elevation || 0);
+        const elevB = typeof b.elevation === 'string' ? parseInt(b.elevation.replace(/\D/g, '')) || 0 : (b.elevation || 0);
+        return elevA - elevB;
+      }
+    });
 
   const strategiesForList = useMemo(() => [...savedStrategies].reverse(), [savedStrategies]);
 
@@ -105,12 +153,12 @@ export function HomePage({ onCreateNew, onLoadStrategy, savedStrategies, onDelet
           {/* Left Panel - Mis Estrategias */}
           <div className="lg:col-span-1 space-y-6">
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-2">
                 <h2>Mis Estrategias</h2>
                 <Badge variant="secondary">{savedStrategies.length}</Badge>
               </div>
 
-              <Button onClick={onCreateNew} className="w-full mb-4">
+              <Button onClick={onCreateNew} className="w-full mb-2">
                 <Plus className="mr-2 h-4 w-4" />
                 Crear Nueva Estrategia
               </Button>
@@ -125,7 +173,7 @@ export function HomePage({ onCreateNew, onLoadStrategy, savedStrategies, onDelet
                 <div className="space-y-3">
                   {strategiesForList.map((strategy) => (
                     <Card key={strategy.id} className="p-4 hover:border-primary/50 transition-colors">
-                      <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-start justify-between mb-0">
                         <div className="flex-1">
                           <h3 className="text-sm mb-1">{strategy.name || strategy.route || 'Sin nombre'}</h3>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -191,17 +239,71 @@ export function HomePage({ onCreateNew, onLoadStrategy, savedStrategies, onDelet
           {/* Right Panel - Carreras Populares */}
           <div className="lg:col-span-2">
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-0">
                 <div>
                   <h2 className="mb-1">Carreras Populares</h2>
                   <p className="text-sm text-muted-foreground">
-                    Próximamente podrás planificar con estos recorridos oficiales
+                    Planifica tu estrategia con estos recorridos oficiales
                   </p>
                 </div>
               </div>
 
+              {/* Controles de filtrado y ordenamiento */}
+              <div className="flex flex-wrap gap-2 mb-0">
+                {/* Buscador */}
+                <div className="flex-1 min-w-[200px]">
+                  <Input
+                    type="text"
+                    placeholder="Buscar carreras..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="border border-border"
+                  />
+                </div>
+
+                <div className="w-[180px] shrink-0">
+                  <Select value={sortBy} onValueChange={(value: 'date' | 'elevation') => setSortBy(value)}>
+                    <SelectTrigger className="w-full min-w-[180px] max-w-[180px]" style={{ width: '180px' }}>
+                      <SelectValue placeholder="Ordenar por" />
+                    </SelectTrigger>
+                    <SelectContent className="w-[180px]">
+                      <SelectItem value="date">Fecha próxima</SelectItem>
+                      <SelectItem value="elevation">Menor desnivel</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="w-[180px] shrink-0">
+                  <Select value={filterDistance} onValueChange={setFilterDistance}>
+                    <SelectTrigger className="w-full min-w-[180px] max-w-[180px]" style={{ width: '180px' }}>
+                      <SelectValue placeholder="Distancia" />
+                    </SelectTrigger>
+                    <SelectContent className="w-[180px]">
+                      <SelectItem value="all">Todas las distancias</SelectItem>
+                      <SelectItem value="5K">5K</SelectItem>
+                      <SelectItem value="10K">10K</SelectItem>
+                      <SelectItem value="Media Maratón">Media Maratón</SelectItem>
+                      <SelectItem value="Maratón">Maratón</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="w-[180px] shrink-0">
+                  <Select value={filterSurface} onValueChange={setFilterSurface}>
+                    <SelectTrigger className="w-full min-w-[180px] max-w-[180px]" style={{ width: '180px' }}>
+                      <SelectValue placeholder="Tipo de carrera" />
+                    </SelectTrigger>
+                    <SelectContent className="w-[180px]">
+                      <SelectItem value="all">Todos los tipos</SelectItem>
+                      <SelectItem value="Asfalto">Asfalto</SelectItem>
+                      <SelectItem value="Trail">Trail</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {popularRaces.map((race) => (
+                {filteredAndSortedRaces.map((race) => (
                   <Card key={race.id} className="p-4 hover:border-primary/50 transition-colors">
                     <div>
                       <h3 className="mb-1">{race.name}</h3>
@@ -217,9 +319,16 @@ export function HomePage({ onCreateNew, onLoadStrategy, savedStrategies, onDelet
                         <Badge variant="secondary" className="text-xs">
                           {race.distance}
                         </Badge>
-                        <Badge variant="secondary" className="text-xs">
-                          {race.elevation}
-                        </Badge>
+                        {race.elevation && (
+                          <Badge variant="secondary" className="text-xs">
+                            {race.elevation}
+                          </Badge>
+                        )}
+                        {race.surface && (
+                          <Badge variant="secondary" className="text-xs">
+                            {race.surface}
+                          </Badge>
+                        )}
                       </div>
 
                       <Button

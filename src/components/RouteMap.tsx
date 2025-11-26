@@ -389,7 +389,7 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
         `}
       </style>
 
-      <div className="relative w-full h-[400px]">
+      <div className={`relative w-full h-[400px] ${isLoading ? 'hidden' : ''}`}>
         <div
           ref={mapContainerRef}
           className={`w-full h-full rounded-xl ${isLoading ? 'hidden' : 'block'}`}
