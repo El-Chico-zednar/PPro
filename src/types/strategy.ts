@@ -2,7 +2,9 @@ import { IntervalType, PaceStrategy, RouteData } from './pace';
 
 export interface SavedStrategy {
   id: number;
+  user_id?: string;
   date: string;
+  created_at?: string;
   name?: string;
   route?: string;
   routeData?: RouteData | null;

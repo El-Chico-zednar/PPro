@@ -8,6 +8,9 @@ import { PaceChart } from './components/PaceChart';
 import { PaceTable } from './components/PaceTable';
 import { HomePage, PopularRace } from './components/HomePage';
 import { LandingPage } from './components/LandingPage';
+import { AuthPage } from './components/AuthPage';
+import { useAuth } from './contexts/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 
@@ -64,12 +67,51 @@ export default function App() {
     segmentLength: number;
   } | null>(null);
 
-  useEffect(() => {
-    // Load saved strategies from localStorage
-    const strategies = JSON.parse(localStorage.getItem('pacePro_savedStrategies') || '[]');
-    setSavedStrategies(strategies);
+  const { user } = useAuth(); // Added useAuth hook
 
-    // Load from localStorage on mount
+  useEffect(() => {
+    // Load saved strategies from Supabase if user is logged in
+    const loadStrategies = async () => {
+      if (!user || !supabase) {
+        setSavedStrategies([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('user_strategies')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading strategies:', error);
+        toast.error('Error al cargar tus estrategias');
+        return;
+      }
+
+      if (data) {
+        // Map snake_case from DB to camelCase for frontend
+        const mappedStrategies: SavedStrategy[] = data.map(s => ({
+          id: s.id,
+          user_id: s.user_id,
+          name: s.name,
+          targetTime: s.target_time,
+          intervalType: s.interval_type,
+          pacingStrategy: s.pacing_strategy,
+          climbEffort: s.climb_effort,
+          segmentLength: s.segment_length,
+          paceData: s.pace_data,
+          routeData: s.route_data,
+          date: s.created_at,
+          created_at: s.created_at
+        }));
+        setSavedStrategies(mappedStrategies);
+      }
+    };
+
+    loadStrategies();
+
+    // Load from localStorage on mount (only last config, not saved strategies)
     const saved = localStorage.getItem('pacePro_lastConfig');
     if (saved) {
       try {
@@ -83,7 +125,7 @@ export default function App() {
         console.error('Error loading saved config', e);
       }
     }
-  }, []);
+  }, [user]); // Added user to dependency array
 
   // Calcular automáticamente cuando cambien los parámetros
   useEffect(() => {
@@ -103,7 +145,7 @@ export default function App() {
 
     setPaceData(strategy);
 
-    // Save to localStorage
+    // Save to localStorage (only last config, not the strategy itself)
     localStorage.setItem('pacePro_lastConfig', JSON.stringify({
       targetTime,
       intervalType,
@@ -124,8 +166,8 @@ export default function App() {
     }
   }, [paceData]);
 
-  const handleSaveStrategy = () => {
-    if (!paceData) return;
+  const handleSaveStrategy = async () => { // Made async
+    if (!paceData || !user || !supabase) return; // Added user and supabase checks
 
     if (!strategyName.trim()) {
       setNameError('Por favor, ingresa un nombre para la estrategia');
@@ -138,72 +180,121 @@ export default function App() {
       return;
     }
 
-    // Si es nueva, guardar directamente
-    const newStrategy = {
-      id: Date.now(),
-      date: new Date().toISOString(),
-      name: strategyName,
-      route: currentRoute?.name,
-      routeData: currentRoute,
-      targetTime,
-      intervalType,
-      pacingStrategy,
-      climbEffort,
-      segmentLength,
-      paceData
-    };
+    try { // Added try-catch block
+      const newStrategy = {
+        user_id: user.id,
+        name: strategyName,
+        target_time: targetTime,
+        interval_type: intervalType,
+        pacing_strategy: pacingStrategy,
+        climb_effort: climbEffort,
+        segment_length: segmentLength,
+        pace_data: paceData,
+        route_data: currentRoute
+      };
 
-    const updatedStrategies = [...savedStrategies, newStrategy];
-    localStorage.setItem('pacePro_savedStrategies', JSON.stringify(updatedStrategies));
-    setSavedStrategies(updatedStrategies);
-    setEditingStrategyId(newStrategy.id);
+      const { data, error } = await supabase
+        .from('user_strategies')
+        .insert(newStrategy)
+        .select()
+        .single();
 
-    // Guardar los parámetros originales después de guardar
-    setOriginalParams({
-      targetTime,
-      intervalType,
-      pacingStrategy,
-      climbEffort,
-      segmentLength
-    });
+      if (error) throw error;
 
-    toast.success(`Estrategia "${strategyName}" guardada`);
-  };
+      if (data) {
+        const savedStrategy: SavedStrategy = {
+          id: data.id,
+          user_id: data.user_id,
+          name: data.name,
+          targetTime: data.target_time,
+          intervalType: data.interval_type,
+          pacingStrategy: data.pacing_strategy,
+          climbEffort: data.climb_effort,
+          segmentLength: data.segment_length,
+          paceData: data.pace_data,
+          routeData: data.route_data,
+          date: data.created_at,
+          created_at: data.created_at
+        };
 
-  const handleUpdateStrategy = () => {
-    if (!paceData || !editingStrategyId) return;
+        setSavedStrategies([savedStrategy, ...savedStrategies]); // Prepend new strategy
+        setEditingStrategyId(savedStrategy.id);
 
-    const updatedStrategies = savedStrategies.map(s =>
-      s.id === editingStrategyId
-        ? {
-          ...s,
-          name: strategyName,
-          route: currentRoute?.name,
-          routeData: currentRoute,
+        // Guardar los parámetros originales después de guardar
+        setOriginalParams({
           targetTime,
           intervalType,
           pacingStrategy,
           climbEffort,
-          segmentLength,
-          paceData,
-          date: new Date().toISOString() // Actualizar fecha de modificación
-        }
-        : s
-    );
+          segmentLength
+        });
 
-    localStorage.setItem('pacePro_savedStrategies', JSON.stringify(updatedStrategies));
-    setSavedStrategies(updatedStrategies);
-    setShowUpdateDialog(false);
-    toast.success(`Estrategia \"${strategyName}\" actualizada`);
+        toast.success(`Estrategia "${strategyName}" guardada`);
+      }
+    } catch (error) {
+      console.error('Error saving strategy:', error);
+      toast.error('Error al guardar la estrategia');
+    }
+  };
 
-    // Actualizar los parámetros originales después de guardar
-    setOriginalParams({
-      targetTime,
-      intervalType,
-      pacingStrategy,
-      climbEffort,
-      segmentLength
-    });
+  const handleUpdateStrategy = async () => { // Made async
+    if (!paceData || !editingStrategyId || !user || !supabase) return; // Added user and supabase checks
+
+    try { // Added try-catch block
+      const updates = {
+        name: strategyName,
+        target_time: targetTime,
+        interval_type: intervalType,
+        pacing_strategy: pacingStrategy,
+        climb_effort: climbEffort,
+        segment_length: segmentLength,
+        pace_data: paceData,
+        route_data: currentRoute,
+        updated_at: new Date().toISOString() // Added updated_at
+      };
+
+      const { error } = await supabase
+        .from('user_strategies')
+        .update(updates)
+        .eq('id', editingStrategyId)
+        .eq('user_id', user.id); // Ensure user owns the strategy
+
+      if (error) throw error;
+
+      const updatedStrategies = savedStrategies.map(s =>
+        s.id === editingStrategyId
+          ? {
+            ...s,
+            name: strategyName,
+            route: currentRoute?.name,
+            routeData: currentRoute,
+            targetTime,
+            intervalType,
+            pacingStrategy,
+            climbEffort,
+            segmentLength,
+            paceData,
+            date: new Date().toISOString() // Actualizar fecha de modificación
+          }
+          : s
+      );
+
+      setSavedStrategies(updatedStrategies);
+      setShowUpdateDialog(false);
+      toast.success(`Estrategia \"${strategyName}\" actualizada`);
+
+      // Actualizar los parámetros originales después de guardar
+      setOriginalParams({
+        targetTime,
+        intervalType,
+        pacingStrategy,
+        climbEffort,
+        segmentLength
+      });
+    } catch (error) {
+      console.error('Error updating strategy:', error);
+      toast.error('Error al actualizar la estrategia');
+    }
   };
 
   // Función para restablecer cambios
@@ -344,11 +435,25 @@ export default function App() {
     }
   };
 
-  const handleDeleteStrategy = (id: number) => {
-    const updatedStrategies = savedStrategies.filter(s => s.id !== id);
-    localStorage.setItem('pacePro_savedStrategies', JSON.stringify(updatedStrategies));
-    setSavedStrategies(updatedStrategies);
-    toast.success('Estrategia eliminada');
+  const handleDeleteStrategy = async (id: number) => { // Made async
+    if (!user || !supabase) return; // Added user and supabase checks
+
+    try { // Added try-catch block
+      const { error } = await supabase
+        .from('user_strategies')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id); // Ensure user owns the strategy
+
+      if (error) throw error;
+
+      const updatedStrategies = savedStrategies.filter(s => s.id !== id);
+      setSavedStrategies(updatedStrategies);
+      toast.success('Estrategia eliminada');
+    } catch (error) {
+      console.error('Error deleting strategy:', error);
+      toast.error('Error al eliminar la estrategia');
+    }
   };
 
   const renderRaceConfigurator = () => {
@@ -552,51 +657,61 @@ export default function App() {
             />
           }
         />
+        <Route path="/login" element={<AuthPage />} />
         <Route
           path="/home"
           element={
-            <HomePage
-              onCreateNew={() => {
-                setEditingStrategyId(null);
-                setOriginalParams(null);
-                setStrategyName('');
-                setCurrentRoute(null);
-                setPaceData(null);
-                navigate('/race-configurator');
-              }}
-              onLoadStrategy={(strategy) => {
-                setEditingStrategyId(strategy.id);
-                setStrategyName(strategy.name || '');
-                setTargetTime(strategy.targetTime || '00:45:00');
-                setIntervalType(strategy.intervalType || 'km');
-                setPacingStrategy(strategy.pacingStrategy || 0);
-                setClimbEffort(strategy.climbEffort || 0);
-                setSegmentLength(strategy.segmentLength || 0);
-                setPaceData(strategy.paceData);
+            <ProtectedRoute>
+              <HomePage
+                onCreateNew={() => {
+                  setEditingStrategyId(null);
+                  setOriginalParams(null);
+                  setStrategyName('');
+                  setCurrentRoute(null);
+                  setPaceData(null);
+                  navigate('/race-configurator');
+                }}
+                onLoadStrategy={(strategy) => {
+                  setEditingStrategyId(strategy.id);
+                  setStrategyName(strategy.name || '');
+                  setTargetTime(strategy.targetTime || '00:45:00');
+                  setIntervalType(strategy.intervalType || 'km');
+                  setPacingStrategy(strategy.pacingStrategy || 0);
+                  setClimbEffort(strategy.climbEffort || 0);
+                  setSegmentLength(strategy.segmentLength || 0);
+                  setPaceData(strategy.paceData);
 
-                if (strategy.routeData) {
-                  setCurrentRoute(strategy.routeData);
-                }
+                  if (strategy.routeData) {
+                    setCurrentRoute(strategy.routeData);
+                  }
 
-                navigate('/race-configurator');
-                toast.success(`Estrategia "${strategy.name}" cargada`);
+                  navigate('/race-configurator');
+                  toast.success(`Estrategia "${strategy.name}" cargada`);
 
-                setOriginalParams({
-                  targetTime: strategy.targetTime || '00:45:00',
-                  intervalType: strategy.intervalType || 'km',
-                  pacingStrategy: strategy.pacingStrategy || 0,
-                  climbEffort: strategy.climbEffort || 0,
-                  segmentLength: strategy.segmentLength || 0
-                });
-              }}
-              savedStrategies={savedStrategies}
-              onDeleteStrategy={handleDeleteStrategy}
-              onSelectRace={handleSelectRace}
-              loadingRaceId={loadingRaceId}
-            />
+                  setOriginalParams({
+                    targetTime: strategy.targetTime || '00:45:00',
+                    intervalType: strategy.intervalType || 'km',
+                    pacingStrategy: strategy.pacingStrategy || 0,
+                    climbEffort: strategy.climbEffort || 0,
+                    segmentLength: strategy.segmentLength || 0
+                  });
+                }}
+                savedStrategies={savedStrategies}
+                onDeleteStrategy={handleDeleteStrategy}
+                onSelectRace={handleSelectRace}
+                loadingRaceId={loadingRaceId}
+              />
+            </ProtectedRoute>
           }
         />
-        <Route path="/race-configurator" element={renderRaceConfigurator()} />
+        <Route
+          path="/race-configurator"
+          element={
+            <ProtectedRoute>
+              {renderRaceConfigurator()}
+            </ProtectedRoute>
+          }
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster />
