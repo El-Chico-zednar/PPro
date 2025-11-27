@@ -293,12 +293,17 @@ async function detectAvailableDistances(page) {
         const tabId = (await tab.getAttribute("id")) || "";
         const panelId = (await tab.getAttribute("aria-controls")) || "";
 
-        // Detección explícita de media maratón por texto o aria-controls
+        // Detección explícita de media/maratón por texto o aria-controls
         const textLower = tabText.toLowerCase();
         const panelLower = panelId.toLowerCase();
         if (textLower.includes("media marat") || textLower.includes("semimar") || panelLower.includes("semi")) {
             distances.push({ category: "Media Maratón", km: 21.1, tab, tabText, panelSelector: panelId ? `#${panelId}` : null });
             console.log(`  ✓ Encontrada: Media Maratón (21.1 km) - "${tabText}"`);
+            continue;
+        }
+        if (textLower.includes("marat") || panelLower.includes("marathon")) {
+            distances.push({ category: "Maratón", km: 42.2, tab, tabText, panelSelector: panelId ? `#${panelId}` : null });
+            console.log(`  ✓ Encontrada: Maratón (42.2 km) - "${tabText}"`);
             continue;
         }
 
@@ -352,6 +357,9 @@ async function detectAvailableDistances(page) {
             } else if ((distanceText.toLowerCase().includes("media") || distanceText.toLowerCase().includes("semi")) && !distances.find(d => d.category === "Media Maratón")) {
                 distances.push({ category: "Media Maratón", km: 21.1, tab: null, tabText: distanceText, panelSelector: null });
                 console.log(`  ✓ Distancia única: Media Maratón (21.1 km)`);
+            } else if (distanceText.toLowerCase().includes("marat") && !distances.find(d => d.category === "Maratón")) {
+                distances.push({ category: "Maratón", km: 42.2, tab: null, tabText: distanceText, panelSelector: null });
+                console.log(`  ✓ Distancia única: Maratón (42.2 km)`);
             }
         }
     }
@@ -631,7 +639,7 @@ async function importOneRace(browser, eventUrl) {
 
 
     const events = [
-        "https://www.finishers.com/es/evento/festival-de-carrera-tossa-de-mar",
+        "https://www.finishers.com/es/evento/maraton-de-murcia",
     ];
 
     for (const url of events) {
