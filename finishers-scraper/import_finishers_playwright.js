@@ -5,10 +5,15 @@ const axios = require("axios");
 require("dotenv").config();
 
 // Inicializamos Supabase
-const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+    console.error("Error: Faltan las variables de entorno SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY (o sus variantes VITE_)");
+    process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const GPX_BUCKET = process.env.SUPABASE_GPX_BUCKET || "race-tracks";
 const TARGET_TABLE =
@@ -639,7 +644,7 @@ async function importOneRace(browser, eventUrl) {
 
 
     const events = [
-        "https://www.finishers.com/es/evento/maraton-de-murcia",
+        "https://www.finishers.com/es/evento/medio-maraton-bidasoa",
     ];
 
     for (const url of events) {

@@ -45,7 +45,7 @@ export function AuthPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-background p-4">
-            <Card className="w-full max-w-md p-8">
+            <Card className="w-full max-w-md p-6">
                 <div className="mb-6 text-center">
                     <svg
                         className="mx-auto h-12 w-12 mb-4"
