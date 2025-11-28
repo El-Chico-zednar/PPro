@@ -35,19 +35,19 @@ export function FileUploader({ onFileProcessed, onRemoveRoute, isEditingStrategy
   const createVirtualRoute = (distanceKm: number): RouteData => {
     const points = [];
     const totalPoints = Math.max(100, Math.floor(distanceKm * 10)); // Al menos 100 puntos
-    
+
     // Crear puntos equidistantes con elevación completamente plana
     for (let i = 0; i <= totalPoints; i++) {
       const progress = i / totalPoints;
       const distance = distanceKm * 1000 * progress; // en metros
-      
+
       // Coordenadas simuladas (centradas en Valencia, España)
       const lat = 39.4699 + (progress * 0.01);
       const lng = -0.3763 + (progress * 0.01);
-      
+
       // Elevación completamente plana
       const elevation = 10;
-      
+
       points.push({
         lat,
         lng,
@@ -55,7 +55,7 @@ export function FileUploader({ onFileProcessed, onRemoveRoute, isEditingStrategy
         distance
       });
     }
-    
+
     return {
       name: `Recorrido ${distanceKm}K`,
       points,
@@ -86,9 +86,9 @@ export function FileUploader({ onFileProcessed, onRemoveRoute, isEditingStrategy
     try {
       const text = await file.text();
       const fileExtension = file.name.toLowerCase().split('.').pop();
-      
+
       let route: RouteData | null = null;
-      
+
       if (fileExtension === 'gpx') {
         route = parseGPX(text, file.name.replace('.gpx', ''));
       } else if (fileExtension === 'tcx') {
@@ -96,7 +96,7 @@ export function FileUploader({ onFileProcessed, onRemoveRoute, isEditingStrategy
       } else {
         toast.error('Formato de archivo no soportado. Por favor, usa .gpx o .tcx');
       }
-      
+
       if (route) {
         onFileProcessed(route);
         toast.success('Archivo procesado correctamente');
@@ -120,7 +120,7 @@ export function FileUploader({ onFileProcessed, onRemoveRoute, isEditingStrategy
     <>
       {!isEditingStrategy && !hasRouteLoaded && (
         <div className="space-y-4">
-          <div className="border-2 border-dashed border-border rounded-lg text-center hover:border-primary transition-colors pt-[16px] pr-[32px] pb-[12px] pl-[32px] m-[0px]">
+          <div className="border-2 border-dashed border-border rounded-lg text-center hover:border-primary transition-colors pt-[16px] pr-[32px] pb-[12px] pl-[32px] mb-4">
             <input
               ref={fileInputRef}
               type="file"
@@ -128,7 +128,7 @@ export function FileUploader({ onFileProcessed, onRemoveRoute, isEditingStrategy
               onChange={handleFileChange}
               className="hidden"
             />
-            
+
             <div className="flex flex-col items-center gap-3">
               {fileName ? (
                 <>
@@ -142,11 +142,11 @@ export function FileUploader({ onFileProcessed, onRemoveRoute, isEditingStrategy
                     Sube un recorrido
                   </div>
                   <div className="text-xs text-muted-foreground space-y-1">
-            <p>• Formatos soportados: .gpx y .tcx</p>
-          </div>
+                    <p>• Formatos soportados: .gpx y .tcx</p>
+                  </div>
                 </>
               )}
-              
+
               <div className="flex gap-2 mt-2">
                 <Button
                   onClick={() => fileInputRef.current?.click()}
@@ -156,7 +156,7 @@ export function FileUploader({ onFileProcessed, onRemoveRoute, isEditingStrategy
                   <FileText className="mr-2 h-4 w-4" />
                   {isProcessing ? 'Procesando...' : fileName ? 'Cambiar archivo' : 'Seleccionar archivo'}
                 </Button>
-                
+
                 {fileName && (
                   <Button
                     onClick={handleRemoveRoute}
@@ -169,7 +169,7 @@ export function FileUploader({ onFileProcessed, onRemoveRoute, isEditingStrategy
               </div>
             </div>
           </div>
-          
+
           {!fileName && (
             <>
               <div className="relative">
@@ -181,7 +181,7 @@ export function FileUploader({ onFileProcessed, onRemoveRoute, isEditingStrategy
                 </div>
               </div>
 
-              <div className="space-y-2 mt-[0px] mr-[0px] mb-[-16px] ml-[0px]">
+              <div className="space-y-2 mt-[0px] mr-[0px] mb-4 ml-[0px]">
                 <Label htmlFor="distance">Crear recorrido virtual por distancia:</Label>
                 <Select
                   value={selectedDistance}

@@ -142,16 +142,17 @@ export function HomePage({ onCreateNew, onLoadStrategy, savedStrategies, onDelet
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        {/* Logo */}
-        <div className="mb-8">
-          <svg width="250" height="53" viewBox="0 0 250 53" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M33.527 0H250L216.473 53H0L33.527 0Z" fill="#797979" />
-          </svg>
-        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Panel - Mis Estrategias */}
-          <div className="lg:col-span-1 space-y-6">
+          {/* Left Panel - Logo and Mis Estrategias */}
+          <div className="lg:col-span-1">
+            {/* Logo */}
+            <div className="mb-6">
+              <svg width="250" height="53" viewBox="0 0 250 53" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M33.527 0H250L216.473 53H0L33.527 0Z" fill="#797979" />
+              </svg>
+            </div>
+
             <Card className="p-6">
               <div className="flex items-center justify-between mb-2">
                 <h2>Mis Estrategias</h2>
@@ -237,7 +238,7 @@ export function HomePage({ onCreateNew, onLoadStrategy, savedStrategies, onDelet
           </div>
 
           {/* Right Panel - Carreras Populares */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-6">
             <Card className="p-6">
               <div className="flex items-center justify-between mb-0">
                 <div>

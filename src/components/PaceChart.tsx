@@ -144,7 +144,7 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
       <div>
 
         <ResponsiveContainer width="100%" height={260}>
@@ -158,7 +158,7 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
             <XAxis
               dataKey="distanceNum"
               stroke="#6366f1"
-              tick={{ fontSize: 12, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}
+              tick={{ fontSize: 11, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}
               ticks={Array.from({ length: Math.floor(route.totalDistance / 1000) + 1 }, (_, i) => i)}
               tickFormatter={(value) => value.toFixed(0)}
               domain={[0, 'dataMax']}
@@ -175,7 +175,7 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
               yAxisId="pace"
               orientation="right"
               stroke="#111827"
-              tick={{ fontSize: 12, fill: '#111827', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}
+              tick={{ fontSize: 11, fill: '#111827', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}
               domain={['auto', 'auto']}
               tickFormatter={formatMinutesToPace}
               width={40}
@@ -210,7 +210,7 @@ export function PaceChart({ paceData, route, onHoverPoint, onHoverEnd }: PaceCha
       </div>
 
       {/* Summary Row */}
-      <div className="bg-indigo-100 p-4 rounded-lg mt-4" style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
+      <div className="bg-white/50 border p-4 rounded-lg mt-4" style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
         <div className="flex flex-wrap justify-between gap-4 text-center">
           <div>
             <div className="text-xs text-indigo-600 mb-1">Tiempo Total</div>
