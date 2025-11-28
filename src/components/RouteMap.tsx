@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { RouteData, PaceStrategy } from '../types/pace';
 
-
 interface HoverPoint {
   lat: number;
   lng: number;
@@ -13,16 +12,63 @@ interface RouteMapProps {
   route: RouteData;
   paceData: PaceStrategy | null;
   hoverPoint?: HoverPoint | null;
+  mapTileLayer?: string;
 }
 
-export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
+export function RouteMap({ route, paceData, hoverPoint, mapTileLayer = 'light' }: RouteMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const routeLayerRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const hoverMarkerRef = useRef<any>(null);
+  const intervalMarkersRef = useRef<any[]>([]);
+  const tileLayerRef = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [leafletReady, setLeafletReady] = useState(false);
+
+  const tileLayerConfigs: Record<string, { url: string; attribution: string; options?: Record<string, any> }> = {
+    light: {
+      url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      options: { subdomains: 'abcd', maxZoom: 19, minZoom: 1, crossOrigin: true }
+    },
+    dark: {
+      url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      options: { subdomains: 'abcd', maxZoom: 19, minZoom: 1, crossOrigin: true }
+    },
+    satellite: {
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      attribution: 'Tiles &copy; Esri',
+      options: {}
+    },
+    terrain: {
+      url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+      attribution: 'Map data &copy; OpenStreetMap contributors, SRTM | Map style &copy; OpenTopoMap',
+      options: { maxZoom: 17 }
+    }
+  };
+
+  const updateIntervalMarkerVisibility = () => {
+    if (!mapRef.current) return;
+
+    const zoom = mapRef.current.getZoom();
+    let step = 1;
+
+    if (zoom < 11) {
+      step = 6;
+    } else if (zoom < 13) {
+      step = 4;
+    } else if (zoom < 15) {
+      step = 2;
+    }
+
+    intervalMarkersRef.current.forEach((marker: any, index: number) => {
+      const el = marker.getElement();
+      if (!el) return;
+      el.style.display = index % step === 0 ? 'block' : 'none';
+    });
+  };
 
   // Load Leaflet CSS and library
   useEffect(() => {
@@ -62,7 +108,7 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
       if (!mounted) return;
       return import('leaflet');
     }).then((LeafletModule) => {
-      if (!LeafletModule || !mounted || !mapContainerRef.current) return;
+      if (!mounted || !mapContainerRef.current) return;
 
       // Fix Leaflet default icon issue
       delete (LeafletModule.Icon.Default.prototype as any)._getIconUrl;
@@ -99,7 +145,7 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
     try {
       // Create map instance
       const map = L.map(mapContainerRef.current, {
-        zoomControl: true,
+        zoomControl: false,
         scrollWheelZoom: true,
         attributionControl: true,
         preferCanvas: false
@@ -111,42 +157,11 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
         13
       );
 
-      // Define layers
-      const light = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        maxZoom: 19,
-        minZoom: 1,
-        crossOrigin: true
-      });
-
-      const dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        maxZoom: 19,
-        minZoom: 1,
-        crossOrigin: true
-      });
-
-      const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-      });
-
-      const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      });
-
-      // Add default
-      light.addTo(map);
-
-      // Add control
-      const baseMaps = {
-        "Claro": light,
-        "Oscuro": dark,
-        "Satélite": satellite,
-        "Estándar": osm
-      };
-
-      L.control.layers(baseMaps).addTo(map);
-
+      const config = tileLayerConfigs[mapTileLayer] || tileLayerConfigs.light;
+      tileLayerRef.current = L.tileLayer(config.url, {
+        attribution: config.attribution,
+        ...(config.options || {})
+      }).addTo(map);
       mapRef.current = map;
 
       // Force map to invalidate size after a short delay
@@ -160,7 +175,24 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
     }
   }, [leafletReady, route.points]);
 
+  // Update tile layer when tileLayer changes
+  useEffect(() => {
+    if (!mapRef.current || !leafletReady) return;
 
+    const L = (window as any).L;
+    if (!L) return;
+
+    const config = tileLayerConfigs[mapTileLayer] || tileLayerConfigs.light;
+
+    if (tileLayerRef.current) {
+      mapRef.current.removeLayer(tileLayerRef.current);
+    }
+
+    tileLayerRef.current = L.tileLayer(config.url, {
+      attribution: config.attribution,
+      ...(config.options || {})
+    }).addTo(mapRef.current);
+  }, [mapTileLayer, leafletReady]);
 
   // Update route and markers when data changes
   useEffect(() => {
@@ -175,6 +207,7 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
       mapRef.current.removeLayer(marker);
     });
     markersRef.current = [];
+    intervalMarkersRef.current = [];
     if (hoverMarkerRef.current) {
       mapRef.current.removeLayer(hoverMarkerRef.current);
       hoverMarkerRef.current = null;
@@ -218,15 +251,13 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
     // Add interval markers if pace data available
     if (paceData) {
       paceData.intervals.forEach((interval, index) => {
-        if (index === paceData.intervals.length - 1) return; // Skip finish marker (already shown)
+        if (index === paceData.intervals.length - 1) return; // Skip finish (already shown)
 
-        const digits = (index + 1).toString().length;
-        const width = digits === 1 ? 20 : 30;
         const markerIcon = L.divIcon({
-          html: `<div style="background-color: white; padding: 2px 4px; border-radius: 4px; border: 2px solid #6366f1; font-size: 10px; font-weight: bold; color: #4f46e5; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; min-width: ${width - 8}px; text-align: center; display: inline-block;">${index + 1}</div>`,
+          html: `<div style="background-color: white; padding: 2px 6px 2px 4px; border-radius: 4px; border: 2px solid #6366f1; font-size: 10px; font-weight: bold; color: #4f46e5;">${index + 1}</div>`,
           className: '',
-          iconSize: [width, 20],
-          iconAnchor: [width / 2, 10]
+          iconSize: [30, 20],
+          iconAnchor: [15, 10]
         });
 
         const marker = L.marker([interval.endPoint.lat, interval.endPoint.lng], {
@@ -234,6 +265,7 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
         }).addTo(mapRef.current);
 
         markersRef.current.push(marker);
+        intervalMarkersRef.current.push(marker);
       });
     }
 
@@ -250,155 +282,74 @@ export function RouteMap({ route, paceData, hoverPoint }: RouteMapProps) {
         mapRef.current.invalidateSize();
       }
     }, 100);
+
+    updateIntervalMarkerVisibility();
   }, [leafletReady, route, paceData]);
 
-  // Handle zoom levels for marker visibility
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !paceData) return;
+    if (!mapRef.current) return;
 
-    const updateMarkers = () => {
-      const zoom = map.getZoom();
-      const markers = markersRef.current;
-
-      // Start and Finish markers are always visible (indices 0 and 1)
-      // Interval markers start at index 2
-      const intervalMarkers = markers.slice(2);
-
-      let step = 1;
-      if (zoom < 13) step = 5;
-      else if (zoom < 15) step = 2;
-
-      intervalMarkers.forEach((marker, index) => {
-        // Interval numbers are 1-based (index + 1)
-        const intervalNumber = index + 1;
-        const shouldShow = intervalNumber % step === 0;
-
-        if (shouldShow) {
-          if (!map.hasLayer(marker)) map.addLayer(marker);
-        } else {
-          if (map.hasLayer(marker)) map.removeLayer(marker);
-        }
-      });
-    };
-
-    map.on('zoomend', updateMarkers);
-    // Initial update
-    updateMarkers();
+    const handler = () => updateIntervalMarkerVisibility();
+    mapRef.current.on('zoomend', handler);
 
     return () => {
-      map.off('zoomend', updateMarkers);
+      if (mapRef.current) {
+        mapRef.current.off('zoomend', handler);
+      }
     };
-  }, [leafletReady, paceData]);
+  }, [leafletReady]);
 
   useEffect(() => {
     const L = (window as any).L;
-    if (!L || !mapRef.current) return;
+    if (!mapRef.current || !L) return;
 
-    if (hoverPoint) {
-      const latlng: [number, number] = [hoverPoint.lat, hoverPoint.lng];
-      if (!hoverMarkerRef.current) {
-        const hoverIcon = L.divIcon({
-          html: `
-            <div style="
-              width: 22px;
-              height: 22px;
-              border-radius: 50%;
-              border: 3px solid #f59e0b;
-              background-color: rgba(249, 115, 22, 0.85);
-              box-shadow: 0 0 0 6px rgba(249, 115, 22, 0.25);
-            "></div>`,
-          className: '',
-          iconSize: [22, 22],
-          iconAnchor: [11, 11]
-        });
-        hoverMarkerRef.current = L.marker(latlng, { icon: hoverIcon }).addTo(mapRef.current);
-        hoverMarkerRef.current.setZIndexOffset?.(1000);
-      } else {
-        hoverMarkerRef.current.setLatLng(latlng);
-        hoverMarkerRef.current.setZIndexOffset?.(1000);
+    if (!hoverPoint) {
+      if (hoverMarkerRef.current) {
+        mapRef.current.removeLayer(hoverMarkerRef.current);
+        hoverMarkerRef.current = null;
       }
-    } else if (hoverMarkerRef.current) {
-      mapRef.current.removeLayer(hoverMarkerRef.current);
-      hoverMarkerRef.current = null;
+      return;
+    }
+
+    const latlng: [number, number] = [hoverPoint.lat, hoverPoint.lng];
+
+    if (!hoverMarkerRef.current) {
+      const icon = L.divIcon({
+        html: '<div style="width: 18px; height: 18px; border-radius: 50%; border: 3px solid #0f172a; background: rgba(79,70,229,0.9); box-shadow: 0 2px 8px rgba(15,23,42,0.4);"></div>',
+        className: '',
+        iconSize: [18, 18],
+        iconAnchor: [9, 9]
+      });
+      hoverMarkerRef.current = L.marker(latlng, { icon, interactive: false }).addTo(mapRef.current);
+    } else {
+      hoverMarkerRef.current.setLatLng(latlng);
     }
   }, [hoverPoint]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (hoverMarkerRef.current && mapRef.current) {
-        mapRef.current.removeLayer(hoverMarkerRef.current);
-        hoverMarkerRef.current = null;
-      }
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
       }
+      hoverMarkerRef.current = null;
     };
   }, []);
 
   return (
-    <div className="space-y-4 relative">
+    <div className="w-full h-full">
       {isLoading && (
-        <div className="w-full h-[400px] rounded-xl border bg-indigo-50 flex items-center justify-center">
+        <div className="w-full h-full bg-indigo-50 flex items-center justify-center">
           <div className="text-indigo-400">Cargando mapa...</div>
         </div>
       )}
-
-      <style>
-        {`
-          .leaflet-control-layers-toggle {
-            width: 30px !important;
-            height: 30px !important;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%234b5563' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='3 6 9 3 15 6 21 3 21 21 15 18 9 21 3 18 3 6' /%3E%3Cline x1='9' y1='3' x2='9' y2='21' /%3E%3Cline x1='15' y1='6' x2='15' y2='18' /%3E%3C/svg%3E") !important;
-            background-size: 18px 18px !important;
-            background-color: white;
-            border-radius: 4px;
-          }
-          .leaflet-touch .leaflet-control-layers-toggle {
-            width: 30px !important;
-            height: 30px !important;
-            background-size: 18px 18px !important;
-          }
-          /* Ensure map stays below modals */
-          .leaflet-container {
-            z-index: 1 !important;
-          }
-          .leaflet-pane {
-            z-index: auto !important;
-          }
-          .leaflet-tile-pane {
-            z-index: 200 !important;
-          }
-          .leaflet-overlay-pane {
-            z-index: 400 !important;
-          }
-          .leaflet-shadow-pane {
-            z-index: 500 !important;
-          }
-          .leaflet-marker-pane {
-            z-index: 600 !important;
-          }
-          .leaflet-tooltip-pane {
-            z-index: 650 !important;
-          }
-          .leaflet-popup-pane {
-            z-index: 700 !important;
-          }
-        `}
-      </style>
-
-      <div className={`relative w-full h-[400px] ${isLoading ? 'hidden' : ''}`}>
-        <div
-          ref={mapContainerRef}
-          className={`w-full h-full rounded-xl ${isLoading ? 'hidden' : 'block'}`}
-          style={{ minHeight: '400px', height: '400px', width: '100%' }}
-          id="route-map"
-        />
-
-
-      </div>
+      <div
+        ref={mapContainerRef}
+        className={`w-full h-full ${isLoading ? 'hidden' : 'block'}`}
+        style={{ minHeight: '100%', height: '100%', width: '100%' }}
+        id="route-map"
+      />
     </div>
   );
 }

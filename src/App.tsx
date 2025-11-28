@@ -7,19 +7,15 @@ import { RouteMap } from './components/RouteMap';
 import { PaceChart } from './components/PaceChart';
 import { PaceTable } from './components/PaceTable';
 import { HomePage, PopularRace } from './components/HomePage';
-import { LandingPage } from './components/LandingPage';
-import { AuthPage } from './components/AuthPage';
-import { useAuth } from './contexts/AuthContext';
-import { ProtectedRoute } from './components/ProtectedRoute';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 
-import { calculatePaceStrategy } from './utils/paceCalculations';
 import { supabase, GPX_BUCKET } from './supabase/client';
 import { parseGPX, parseTCX } from './utils/gpxParser';
+import { calculatePaceStrategy } from './utils/paceCalculations';
 import { RouteData, PaceStrategy, IntervalType } from './types/pace';
-import { SavedStrategy } from './types/strategy';
-import { Play, Save, RotateCcw } from 'lucide-react';
+import { Play, Save, Share2, RotateCcw } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { toast } from 'sonner';
 import { Toaster } from './components/ui/sonner';
@@ -34,13 +30,6 @@ import {
   AlertDialogTitle,
 } from './components/ui/alert-dialog';
 
-type HoverPoint = {
-  lat: number;
-  lng: number;
-  distance: number;
-  elevation: number;
-};
-
 export default function App() {
   const navigate = useNavigate();
   const [currentRoute, setCurrentRoute] = useState<RouteData | null>(null);
@@ -51,12 +40,19 @@ export default function App() {
   const [climbEffort, setClimbEffort] = useState(0); // -50 to 50 (easier to harder)
   const [segmentLength, setSegmentLength] = useState(0); // -50 to 50 (shorter to longer segments)
   const [paceData, setPaceData] = useState<PaceStrategy | null>(null);
-  const [savedStrategies, setSavedStrategies] = useState<SavedStrategy[]>([]);
+  const [savedStrategies, setSavedStrategies] = useState<any[]>([]);
   const [editingStrategyId, setEditingStrategyId] = useState<number | null>(null);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [nameError, setNameError] = useState<string>('');
   const [loadingRaceId, setLoadingRaceId] = useState<string | number | null>(null);
-  const [hoverPoint, setHoverPoint] = useState<HoverPoint | null>(null);
+  const [hoverPoint, setHoverPoint] = useState<{
+    lat: number;
+    lng: number;
+    distance: number;
+    elevation: number;
+  } | null>(null);
+  const [isPopularRaceLoaded, setIsPopularRaceLoaded] = useState(false);
+  const [mapTileLayer, setMapTileLayer] = useState<string>('light');
 
   // Estado para los parámetros originales de una estrategia cargada
   const [originalParams, setOriginalParams] = useState<{
@@ -67,51 +63,12 @@ export default function App() {
     segmentLength: number;
   } | null>(null);
 
-  const { user } = useAuth(); // Added useAuth hook
-
   useEffect(() => {
-    // Load saved strategies from Supabase if user is logged in
-    const loadStrategies = async () => {
-      if (!user || !supabase) {
-        setSavedStrategies([]);
-        return;
-      }
+    // Load saved strategies from localStorage
+    const strategies = JSON.parse(localStorage.getItem('pacePro_savedStrategies') || '[]');
+    setSavedStrategies(strategies);
 
-      const { data, error } = await supabase
-        .from('user_strategies')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error loading strategies:', error);
-        toast.error('Error al cargar tus estrategias');
-        return;
-      }
-
-      if (data) {
-        // Map snake_case from DB to camelCase for frontend
-        const mappedStrategies: SavedStrategy[] = data.map(s => ({
-          id: s.id,
-          user_id: s.user_id,
-          name: s.name,
-          targetTime: s.target_time,
-          intervalType: s.interval_type,
-          pacingStrategy: s.pacing_strategy,
-          climbEffort: s.climb_effort,
-          segmentLength: s.segment_length,
-          paceData: s.pace_data,
-          routeData: s.route_data,
-          date: s.created_at,
-          created_at: s.created_at
-        }));
-        setSavedStrategies(mappedStrategies);
-      }
-    };
-
-    loadStrategies();
-
-    // Load from localStorage on mount (only last config, not saved strategies)
+    // Load from localStorage on mount
     const saved = localStorage.getItem('pacePro_lastConfig');
     if (saved) {
       try {
@@ -125,12 +82,14 @@ export default function App() {
         console.error('Error loading saved config', e);
       }
     }
-  }, [user]); // Added user to dependency array
+  }, []);
 
   // Calcular automáticamente cuando cambien los parámetros
   useEffect(() => {
     if (!currentRoute) {
       setPaceData(null);
+      setIsPopularRaceLoaded(false);
+      setHoverPoint(null);
       return;
     }
 
@@ -145,7 +104,7 @@ export default function App() {
 
     setPaceData(strategy);
 
-    // Save to localStorage (only last config, not the strategy itself)
+    // Save to localStorage
     localStorage.setItem('pacePro_lastConfig', JSON.stringify({
       targetTime,
       intervalType,
@@ -155,19 +114,42 @@ export default function App() {
       routeName: currentRoute.name
     }));
   }, [currentRoute, targetTime, intervalType, pacingStrategy, climbEffort, segmentLength]);
-
   useEffect(() => {
     setHoverPoint(null);
-  }, [currentRoute]);
+  }, [currentRoute, paceData]);
 
-  useEffect(() => {
-    if (!paceData) {
-      setHoverPoint(null);
+  const handleCalculate = () => {
+    if (!currentRoute) {
+      toast.error('Por favor, sube un archivo GPX o TCX');
+      return;
     }
-  }, [paceData]);
 
-  const handleSaveStrategy = async () => { // Made async
-    if (!paceData || !user || !supabase) return; // Added user and supabase checks
+    const strategy = calculatePaceStrategy(
+      currentRoute,
+      targetTime,
+      intervalType,
+      pacingStrategy,
+      climbEffort,
+      segmentLength
+    );
+
+    setPaceData(strategy);
+
+    // Save to localStorage
+    localStorage.setItem('pacePro_lastConfig', JSON.stringify({
+      targetTime,
+      intervalType,
+      pacingStrategy,
+      climbEffort,
+      segmentLength,
+      routeName: currentRoute.name
+    }));
+
+    toast.success('Estrategia de ritmo calculada');
+  };
+
+  const handleSaveStrategy = () => {
+    if (!paceData) return;
 
     if (!strategyName.trim()) {
       setNameError('Por favor, ingresa un nombre para la estrategia');
@@ -180,121 +162,72 @@ export default function App() {
       return;
     }
 
-    try { // Added try-catch block
-      const newStrategy = {
-        user_id: user.id,
-        name: strategyName,
-        target_time: targetTime,
-        interval_type: intervalType,
-        pacing_strategy: pacingStrategy,
-        climb_effort: climbEffort,
-        segment_length: segmentLength,
-        pace_data: paceData,
-        route_data: currentRoute
-      };
+    // Si es nueva, guardar directamente
+    const newStrategy = {
+      id: Date.now(),
+      date: new Date().toISOString(),
+      name: strategyName,
+      route: currentRoute?.name,
+      routeData: currentRoute,
+      targetTime,
+      intervalType,
+      pacingStrategy,
+      climbEffort,
+      segmentLength,
+      paceData
+    };
 
-      const { data, error } = await supabase
-        .from('user_strategies')
-        .insert(newStrategy)
-        .select()
-        .single();
+    const updatedStrategies = [...savedStrategies, newStrategy];
+    localStorage.setItem('pacePro_savedStrategies', JSON.stringify(updatedStrategies));
+    setSavedStrategies(updatedStrategies);
+    setEditingStrategyId(newStrategy.id);
 
-      if (error) throw error;
+    // Guardar los parámetros originales después de guardar
+    setOriginalParams({
+      targetTime,
+      intervalType,
+      pacingStrategy,
+      climbEffort,
+      segmentLength
+    });
 
-      if (data) {
-        const savedStrategy: SavedStrategy = {
-          id: data.id,
-          user_id: data.user_id,
-          name: data.name,
-          targetTime: data.target_time,
-          intervalType: data.interval_type,
-          pacingStrategy: data.pacing_strategy,
-          climbEffort: data.climb_effort,
-          segmentLength: data.segment_length,
-          paceData: data.pace_data,
-          routeData: data.route_data,
-          date: data.created_at,
-          created_at: data.created_at
-        };
+    toast.success(`Estrategia "${strategyName}" guardada`);
+  };
 
-        setSavedStrategies([savedStrategy, ...savedStrategies]); // Prepend new strategy
-        setEditingStrategyId(savedStrategy.id);
+  const handleUpdateStrategy = () => {
+    if (!paceData || !editingStrategyId) return;
 
-        // Guardar los parámetros originales después de guardar
-        setOriginalParams({
+    const updatedStrategies = savedStrategies.map(s =>
+      s.id === editingStrategyId
+        ? {
+          ...s,
+          name: strategyName,
+          route: currentRoute?.name,
+          routeData: currentRoute,
           targetTime,
           intervalType,
           pacingStrategy,
           climbEffort,
-          segmentLength
-        });
+          segmentLength,
+          paceData,
+          date: new Date().toISOString() // Actualizar fecha de modificación
+        }
+        : s
+    );
 
-        toast.success(`Estrategia "${strategyName}" guardada`);
-      }
-    } catch (error) {
-      console.error('Error saving strategy:', error);
-      toast.error('Error al guardar la estrategia');
-    }
-  };
+    localStorage.setItem('pacePro_savedStrategies', JSON.stringify(updatedStrategies));
+    setSavedStrategies(updatedStrategies);
+    setShowUpdateDialog(false);
+    toast.success(`Estrategia \"${strategyName}\" actualizada`);
 
-  const handleUpdateStrategy = async () => { // Made async
-    if (!paceData || !editingStrategyId || !user || !supabase) return; // Added user and supabase checks
-
-    try { // Added try-catch block
-      const updates = {
-        name: strategyName,
-        target_time: targetTime,
-        interval_type: intervalType,
-        pacing_strategy: pacingStrategy,
-        climb_effort: climbEffort,
-        segment_length: segmentLength,
-        pace_data: paceData,
-        route_data: currentRoute,
-        updated_at: new Date().toISOString() // Added updated_at
-      };
-
-      const { error } = await supabase
-        .from('user_strategies')
-        .update(updates)
-        .eq('id', editingStrategyId)
-        .eq('user_id', user.id); // Ensure user owns the strategy
-
-      if (error) throw error;
-
-      const updatedStrategies = savedStrategies.map(s =>
-        s.id === editingStrategyId
-          ? {
-            ...s,
-            name: strategyName,
-            route: currentRoute?.name,
-            routeData: currentRoute,
-            targetTime,
-            intervalType,
-            pacingStrategy,
-            climbEffort,
-            segmentLength,
-            paceData,
-            date: new Date().toISOString() // Actualizar fecha de modificación
-          }
-          : s
-      );
-
-      setSavedStrategies(updatedStrategies);
-      setShowUpdateDialog(false);
-      toast.success(`Estrategia \"${strategyName}\" actualizada`);
-
-      // Actualizar los parámetros originales después de guardar
-      setOriginalParams({
-        targetTime,
-        intervalType,
-        pacingStrategy,
-        climbEffort,
-        segmentLength
-      });
-    } catch (error) {
-      console.error('Error updating strategy:', error);
-      toast.error('Error al actualizar la estrategia');
-    }
+    // Actualizar los parámetros originales después de guardar
+    setOriginalParams({
+      targetTime,
+      intervalType,
+      pacingStrategy,
+      climbEffort,
+      segmentLength
+    });
   };
 
   // Función para restablecer cambios
@@ -318,6 +251,13 @@ export default function App() {
     climbEffort !== originalParams.climbEffort ||
     segmentLength !== originalParams.segmentLength
   );
+
+  const handleDeleteStrategy = (id: number) => {
+    const updatedStrategies = savedStrategies.filter(s => s.id !== id);
+    localStorage.setItem('pacePro_savedStrategies', JSON.stringify(updatedStrategies));
+    setSavedStrategies(updatedStrategies);
+    toast.success('Estrategia eliminada');
+  };
 
   const handleSelectRace = async (race: PopularRace) => {
     const gpxPath = race.gpx_storage_path?.trim();
@@ -343,17 +283,13 @@ export default function App() {
         fileText = await res.text();
       } else {
         // Ruta en Storage - Optimizado para velocidad
-        // Normalizar la ruta: eliminar barras iniciales y asegurar que esté bien formateada
         let objectPath = gpxPath.replace(/^\//, '').replace(/\\/g, '/');
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
-        // Estrategia optimizada: Usar URL pública primero (más rápida) con la combinación más probable
-        // Bucket correcto: 'race-tracks' con prefijo 'tracks/'
         const primaryBucket = 'race-tracks';
         const primaryPath = objectPath.startsWith('tracks/') ? objectPath : `tracks/${objectPath}`;
 
         if (supabaseUrl) {
-          // Intentar primero la combinación más probable (URL pública, más rápida)
           const primaryUrl = `${supabaseUrl}/storage/v1/object/public/${primaryBucket}/${encodeURIComponent(primaryPath)}`;
           try {
             const res = await fetch(primaryUrl);
@@ -365,7 +301,6 @@ export default function App() {
           }
         }
 
-        // Si la URL pública no funcionó, intentar otras combinaciones en paralelo
         if (!fileText && supabaseUrl) {
           const alternatives = [
             { bucket: 'race-tracks', path: objectPath },
@@ -374,7 +309,6 @@ export default function App() {
             { bucket: 'race_tracks', path: objectPath },
           ].filter(alt => !(alt.bucket === primaryBucket && alt.path === primaryPath));
 
-          // Intentar todas las alternativas en paralelo y tomar la primera que funcione
           const fetchPromises = alternatives.map(alt =>
             fetch(`${supabaseUrl}/storage/v1/object/public/${alt.bucket}/${encodeURIComponent(alt.path)}`)
               .then(res => res.ok ? res.text() : null)
@@ -385,12 +319,10 @@ export default function App() {
           fileText = results.find(result => result !== null) || null;
         }
 
-        // Como último recurso, usar la API de Storage (más lenta)
         if (!fileText) {
           const bucketsToTry = [primaryBucket, 'race_tracks', GPX_BUCKET].filter((b, i, arr) => arr.indexOf(b) === i);
 
           for (const bucket of bucketsToTry) {
-            // Intentar con la ruta más probable primero
             const pathsToTry = objectPath.startsWith('tracks/')
               ? [objectPath, objectPath.replace(/^tracks\//, '')]
               : [`tracks/${objectPath}`, objectPath];
@@ -420,10 +352,11 @@ export default function App() {
 
       setCurrentRoute(route);
       setPaceData(null);
+      setIsPopularRaceLoaded(true);
       setStrategyName(race.name || '');
       setEditingStrategyId(null);
       setOriginalParams(null);
-      navigate('/race-configurator');
+      navigate('/race-planner');
       toast.success(`Recorrido "${race.name}" cargado`);
     } catch (error: any) {
       console.error('Error cargando GPX de Supabase', error);
@@ -431,288 +364,331 @@ export default function App() {
       toast.error(`No se pudo cargar el GPX de la carrera: ${errorMessage}`);
     } finally {
       setLoadingRaceId(null);
-      setHoverPoint(null);
     }
   };
 
-  const handleDeleteStrategy = async (id: number) => { // Made async
-    if (!user || !supabase) return; // Added user and supabase checks
+  const handleShare = () => {
+    if (!paceData) return;
 
-    try { // Added try-catch block
-      const { error } = await supabase
-        .from('user_strategies')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user.id); // Ensure user owns the strategy
+    const shareData = {
+      route: currentRoute?.name,
+      targetTime,
+      intervalType,
+      pacingStrategy,
+      climbEffort,
+      segmentLength
+    };
+    const encoded = btoa(JSON.stringify(shareData));
+    const url = `${window.location.origin}${window.location.pathname}?plan=${encoded}`;
 
-      if (error) throw error;
+    // Fallback copy method that works even when Clipboard API is blocked
+    const copyToClipboard = (text: string) => {
+      // Try modern API first
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text)
+          .then(() => {
+            toast.success('Enlace copiado al portapapeles');
+          })
+          .catch(() => {
+            // If modern API fails, use fallback
+            fallbackCopy(text);
+          });
+      } else {
+        // Use fallback if modern API not available
+        fallbackCopy(text);
+      }
+    };
 
-      const updatedStrategies = savedStrategies.filter(s => s.id !== id);
-      setSavedStrategies(updatedStrategies);
-      toast.success('Estrategia eliminada');
-    } catch (error) {
-      console.error('Error deleting strategy:', error);
-      toast.error('Error al eliminar la estrategia');
-    }
+    const fallbackCopy = (text: string) => {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+
+      try {
+        document.execCommand('copy');
+        toast.success('Enlace copiado al portapapeles');
+      } catch (err) {
+        console.error('Error al copiar:', err);
+        toast.error('No se pudo copiar. Enlace: ' + text);
+      }
+
+      document.body.removeChild(textArea);
+    };
+
+    copyToClipboard(url);
   };
 
-  const renderRaceConfigurator = () => {
-    const showFileUploader = editingStrategyId === null && (!currentRoute || currentRoute.isVirtual);
+  const homePageElement = (
+    <HomePage
+      onCreateNew={() => {
+        // Reset al crear nueva estrategia
+        setEditingStrategyId(null);
+        setOriginalParams(null);
+        setStrategyName('');
+        setCurrentRoute(null);
+        setPaceData(null);
+        setIsPopularRaceLoaded(false);
+        navigate('/race-planner');
+      }}
+      onLoadStrategy={(strategy) => {
+        // Cargar todos los datos de la estrategia
+        setEditingStrategyId(strategy.id);
+        setStrategyName(strategy.name || '');
+        setTargetTime(strategy.targetTime || '00:45:00');
+        setIntervalType(strategy.intervalType || 'km');
+        setPacingStrategy(strategy.pacingStrategy || 0);
+        setClimbEffort(strategy.climbEffort || 0);
+        setSegmentLength(strategy.segmentLength || 0);
+        setPaceData(strategy.paceData);
 
-    return (
-      <div className="min-h-screen bg-background p-4 md:p-8">
-        <div className="max-w-7xl mx-auto">
+        // Cargar la ruta si existe
+        if (strategy.routeData) {
+          setCurrentRoute(strategy.routeData);
+        }
+        setIsPopularRaceLoaded(false);
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Panel - Configuration */}
-            <div className="lg:col-span-1">
-              {/* Logo */}
-              <div className="mb-6">
-                <button
-                  onClick={() => navigate('/home')}
-                  className="cursor-pointer inline-block bg-transparent border-0 p-0 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded"
-                  aria-label="Ir a la página de inicio"
-                >
-                  <svg width="250" height="53" viewBox="0 0 250 53" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M33.527 0H250L216.473 53H0L33.527 0Z" fill="#797979" />
-                  </svg>
-                </button>
+        navigate('/race-planner');
+        toast.success(`Estrategia "${strategy.name}" cargada`);
+
+        // Guardar los parámetros originales
+        setOriginalParams({
+          targetTime: strategy.targetTime || '00:45:00',
+          intervalType: strategy.intervalType || 'km',
+          pacingStrategy: strategy.pacingStrategy || 0,
+          climbEffort: strategy.climbEffort || 0,
+          segmentLength: strategy.segmentLength || 0
+        });
+      }}
+      savedStrategies={savedStrategies}
+      onDeleteStrategy={handleDeleteStrategy}
+      onSelectRace={handleSelectRace}
+      loadingRaceId={loadingRaceId}
+    />
+  );
+
+  const plannerPageElement = (
+    <div className="min-h-screen h-screen bg-background overflow-hidden relative">
+      {/* Mapa de fondo */}
+      {currentRoute && !currentRoute.isVirtual && (
+        <div className="absolute inset-0 z-0">
+          <RouteMap
+            route={currentRoute}
+            paceData={paceData}
+            hoverPoint={hoverPoint}
+            mapTileLayer={mapTileLayer}
+          />
+        </div>
+      )}
+
+      {/* Overlay oscuro para mejorar legibilidad */}
+      {currentRoute && !currentRoute.isVirtual && (
+        <div className="absolute inset-0 bg-black/10 z-10 pointer-events-none"></div>
+      )}
+
+      {/* Header flotante */}
+      <div className="absolute top-0 left-0 right-0 z-30 bg-gradient-to-b from-black/05 to-transparent p-4 md:p-6">
+        <div className="flex items-center justify-center">
+          <button
+            type="button"
+            onClick={() => navigate('/home')}
+            className="flex items-center gap-3 text-white hover:opacity-90 transition mr-40"
+          >
+            <svg width="250" height="53" viewBox="0 0 250 53" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M33.527 0H250L216.473 53H0L33.527 0Z" fill="#ffffff" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Contenedor de paneles laterales */}
+      <div className="absolute inset-0 z-20 pointer-events-none flex justify-between items-start">
+        {/* Panel izquierdo - Configuración */}
+        <div className="w-84 max-w-88 max-h-[calc(100vh-24px)] pointer-events-auto ml-6 pt-8 flex flex-col">
+          <Card className="flex flex-col h-full bg-white/50 backdrop-blur-sm overflow-hidden">
+            {/* Fixed Header Section */}
+            <div className="px-4 pt-4 pb-0 shrink-0">
+              <div className="m-[2px]">
+                <Label htmlFor="strategy-name">Nombre de la Estrategia</Label>
+                <Input
+                  id="strategy-name"
+                  type="text"
+                  placeholder="Ej: Maratón Valencia 2025"
+                  value={strategyName}
+                  onChange={(e) => {
+                    setStrategyName(e.target.value);
+                    setNameError('');
+                  }}
+                  className="mt-2 bg-white/50 border border-gray-300"
+                />
+                {nameError && <p className="text-sm text-destructive mt-1.5">{nameError}</p>}
               </div>
+            </div>
 
-              <div>
-
-                <div className="mb-4">
-                  <Label htmlFor="strategy-name">Nombre de la Estrategia</Label>
-                  <Input
-                    id="strategy-name"
-                    type="text"
-                    placeholder="Ej: Maratón Valencia 2025"
-                    value={strategyName}
-                    onChange={(e) => {
-                      setStrategyName(e.target.value);
-                      setNameError(''); // Limpiar el error cuando el usuario escribe
+            {/* Scrollable Content Section */}
+            <div className="px-4 pb-4 pt-0 overflow-y-auto custom-scrollbar">
+              {!isPopularRaceLoaded && (
+                <div className="mb-0">
+                  <FileUploader
+                    onFileProcessed={(route) => {
+                      setCurrentRoute(route);
+                      setIsPopularRaceLoaded(false);
                     }}
-                    className="mt-1.5"
+                    onRemoveRoute={() => {
+                      setCurrentRoute(null);
+                      setPaceData(null);
+                      setIsPopularRaceLoaded(false);
+                    }}
+                    isEditingStrategy={editingStrategyId !== null}
                   />
-                  {nameError && <p className="text-sm text-destructive mt-1.5">{nameError}</p>}
                 </div>
+              )}
 
-                {showFileUploader && (
-                  <div className="mb-2">
-                    <FileUploader
-                      onFileProcessed={(route) => setCurrentRoute(route)}
-                      onRemoveRoute={() => {
-                        setCurrentRoute(null);
-                        setPaceData(null);
-                      }}
-                      isEditingStrategy={editingStrategyId !== null}
-                      hasRouteLoaded={currentRoute !== null && !currentRoute.isVirtual}
-                    />
-                  </div>
-                )}
-
-                {currentRoute && (
-                  <div className="my-4 bg-white rounded-lg border p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium">{currentRoute.name}</span>
-                    </div>
-                    <div className="text-sm text-muted-foreground space-y-1">
-                      <div>Distancia: {(currentRoute.totalDistance / 1000).toFixed(2)} km</div>
-                      <div>Desnivel +: {currentRoute.totalElevationGain.toFixed(0)} m</div>
-                    </div>
-                  </div>
-                )}
-
-                {currentRoute && (
-                  <ConfigurationPanel
-                    targetTime={targetTime}
-                    onTargetTimeChange={setTargetTime}
-                    intervalType={intervalType}
-                    onIntervalTypeChange={setIntervalType}
-                    pacingStrategy={pacingStrategy}
-                    onPacingStrategyChange={setPacingStrategy}
-                    climbEffort={climbEffort}
-                    onClimbEffortChange={setClimbEffort}
-                    segmentLength={segmentLength}
-                    onSegmentLengthChange={setSegmentLength}
-                  />
-                )}
-
-                {paceData && (
-                  <Button
-                    onClick={handleSaveStrategy}
-                    variant="outline"
-                    className="w-full mt-4"
-                    disabled={editingStrategyId !== null && !hasParameterChanges}
-                  >
-                    <Save className="mr-2 h-4 w-4" />
-                    {editingStrategyId ? 'Actualizar' : 'Guardar'}
-                  </Button>
-                )}
-
-                {hasParameterChanges && (
-                  <Button
-                    onClick={handleResetChanges}
-                    variant="outline"
-                    className="w-full mt-2"
-                  >
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    Restablecer Cambios
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {/* Right Panel - Results */}
-            <div className="lg:col-span-2 space-y-6">
               {currentRoute && (
-                <>
-                  {/* Solo mostrar el mapa si NO es una ruta virtual */}
-                  {!currentRoute.isVirtual && (
-                    <Card className="p-0">
-
-                      <RouteMap
-                        route={currentRoute}
-                        paceData={paceData}
-                        hoverPoint={hoverPoint}
-                      />
-                    </Card>
-                  )}
-
-                  {paceData && (
-                    <>
-                      <Card className="p-6">
-
-                        <PaceChart
-                          paceData={paceData}
-                          route={currentRoute}
-                          onHoverPoint={(point) => setHoverPoint(point)}
-                          onHoverEnd={() => setHoverPoint(null)}
-                        />
-                      </Card>
-
-                      <Card className="p-0">
-
-                        <PaceTable
-                          paceData={paceData}
-                          intervalType={intervalType}
-                        />
-                      </Card>
-                    </>
-                  )}
-
-                  {!paceData && (
-                    <Card className="p-12">
-                      <div className="text-center text-muted-foreground">
-                        <Play className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                        <p>Ajustando parámetros...</p>
-                      </div>
-                    </Card>
-                  )}
-                </>
+                <div className="mb-4 bg-card rounded-lg border mt-[0px] mr-[0px] ml-[0px] p-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm">{currentRoute.name}</span>
+                  </div>
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <div>Distancia: {(currentRoute.totalDistance / 1000).toFixed(2)} km</div>
+                    <div>Desnivel +: {currentRoute.totalElevationGain.toFixed(0)} m</div>
+                  </div>
+                </div>
               )}
 
-              {!currentRoute && (
-                <Card className="p-12">
-                  <div className="text-center text-muted-foreground">
-                    <p>Sube un archivo GPX o TCX, o selecciona una distancia para comenzar</p>
-                  </div>
-                </Card>
+              <ConfigurationPanel
+                targetTime={targetTime}
+                onTargetTimeChange={setTargetTime}
+                intervalType={intervalType}
+                onIntervalTypeChange={setIntervalType}
+                pacingStrategy={pacingStrategy}
+                onPacingStrategyChange={setPacingStrategy}
+                climbEffort={climbEffort}
+                onClimbEffortChange={setClimbEffort}
+                segmentLength={segmentLength}
+                onSegmentLengthChange={setSegmentLength}
+              />
+
+              {paceData && (
+                <Button
+                  onClick={handleSaveStrategy}
+                  variant="outline"
+                  className="w-full mt-4"
+                  disabled={editingStrategyId !== null && !hasParameterChanges}
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  {editingStrategyId ? 'Actualizar' : 'Guardar'}
+                </Button>
+              )}
+
+              {hasParameterChanges && (
+                <Button
+                  onClick={handleResetChanges}
+                  variant="outline"
+                  className="w-full mt-0 mt-2"
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Restablecer Cambios
+                </Button>
               )}
             </div>
-          </div>
+          </Card>
         </div>
 
-        {/* Modal de confirmación para actualizar estrategia */}
-        <AlertDialog open={showUpdateDialog} onOpenChange={setShowUpdateDialog}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Actualizar Estrategia</AlertDialogTitle>
-              <AlertDialogDescription>
-                ¿Estás seguro de que quieres actualizar la estrategia "{strategyName}"? Los cambios reemplazarán la estrategia guardada anteriormente.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={handleUpdateStrategy}>
-                Actualizar
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        {/* Espacio central para ver el track */}
+        <div className="flex-1"></div>
 
+        {/* Panel derecho - Resultados */}
+        <div className="w-fit min-w-96 max-w-128 h-full overflow-y-auto pointer-events-auto space-y-4 mr-6 mt-[-16px] pt-12">
+          {paceData && (
+            <>
+              <Card className="p-4 bg-white/50 backdrop-blur-sm">
+                <PaceChart
+                  paceData={paceData}
+                  route={currentRoute!}
+                  onHoverPoint={(point) => setHoverPoint(point)}
+                  onHoverEnd={() => setHoverPoint(null)}
+                />
+              </Card>
+
+              <Card className="bg-white/95 backdrop-blur-sm p-0">
+                <PaceTable
+                  paceData={paceData}
+                  intervalType={intervalType}
+                />
+              </Card>
+            </>
+          )}
+
+          {!paceData && currentRoute && (
+            <Card className="p-12 bg-white/95 backdrop-blur-sm shadow-2xl">
+              <div className="text-center text-muted-foreground">
+                <Play className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                <p>Ajustando parámetros...</p>
+              </div>
+            </Card>
+          )}
+
+          {!currentRoute && (
+            <Card className="p-12 bg-white/95 backdrop-blur-sm">
+              <div className="text-center text-muted-foreground">
+                <p>Sube un archivo GPX o TCX, o selecciona una distancia para comenzar</p>
+              </div>
+            </Card>
+          )}
+        </div>
       </div>
-    );
-  };
+
+      {/* Map Texture Selector - Bottom Center */}
+      {currentRoute && !currentRoute.isVirtual && (
+        <div className="bottom-centered z-30 flex justify-center pointer-events-none">
+          <div className="pointer-events-auto">
+            <Select value={mapTileLayer} onValueChange={setMapTileLayer}>
+              <SelectTrigger className="w-44 h-8 text-sm bg-white/90 border-gray-300">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="light">Claro</SelectItem>
+                {/* <SelectItem value="dark">Oscuro</SelectItem> */}
+                <SelectItem value="satellite">Satélite</SelectItem>
+                <SelectItem value="terrain">Terreno</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmación para actualizar estrategia */}
+      <AlertDialog open={showUpdateDialog} onOpenChange={setShowUpdateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Actualizar Estrategia</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Estás seguro de que quieres actualizar la estrategia "{strategyName}"? Los cambios reemplazarán la estrategia guardada anteriormente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleUpdateStrategy}>
+              Actualizar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
 
   return (
     <>
       <Routes>
-        <Route
-          path="/"
-          element={
-            <LandingPage
-              onGetStarted={() => navigate('/home')}
-              onViewDemo={() => navigate('/race-configurator')}
-            />
-          }
-        />
-        <Route path="/login" element={<AuthPage />} />
-        <Route
-          path="/home"
-          element={
-            <ProtectedRoute>
-              <HomePage
-                onCreateNew={() => {
-                  setEditingStrategyId(null);
-                  setOriginalParams(null);
-                  setStrategyName('');
-                  setCurrentRoute(null);
-                  setPaceData(null);
-                  navigate('/race-configurator');
-                }}
-                onLoadStrategy={(strategy) => {
-                  setEditingStrategyId(strategy.id);
-                  setStrategyName(strategy.name || '');
-                  setTargetTime(strategy.targetTime || '00:45:00');
-                  setIntervalType(strategy.intervalType || 'km');
-                  setPacingStrategy(strategy.pacingStrategy || 0);
-                  setClimbEffort(strategy.climbEffort || 0);
-                  setSegmentLength(strategy.segmentLength || 0);
-                  setPaceData(strategy.paceData);
-
-                  if (strategy.routeData) {
-                    setCurrentRoute(strategy.routeData);
-                  }
-
-                  navigate('/race-configurator');
-                  toast.success(`Estrategia "${strategy.name}" cargada`);
-
-                  setOriginalParams({
-                    targetTime: strategy.targetTime || '00:45:00',
-                    intervalType: strategy.intervalType || 'km',
-                    pacingStrategy: strategy.pacingStrategy || 0,
-                    climbEffort: strategy.climbEffort || 0,
-                    segmentLength: strategy.segmentLength || 0
-                  });
-                }}
-                savedStrategies={savedStrategies}
-                onDeleteStrategy={handleDeleteStrategy}
-                onSelectRace={handleSelectRace}
-                loadingRaceId={loadingRaceId}
-              />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/race-configurator"
-          element={
-            <ProtectedRoute>
-              {renderRaceConfigurator()}
-            </ProtectedRoute>
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/home" element={homePageElement} />
+        <Route path="/race-planner" element={plannerPageElement} />
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
       <Toaster />
     </>

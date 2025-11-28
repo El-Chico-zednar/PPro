@@ -15,7 +15,7 @@ export function PaceTable({ paceData, intervalType }: PaceTableProps) {
     } else if (intervalType === 'mile') {
       return `${index + 1} mi`;
     } else {
-      return `Seg. ${index + 1}`;
+      return `${index + 1}`;
     }
   };
 
@@ -42,12 +42,12 @@ export function PaceTable({ paceData, intervalType }: PaceTableProps) {
           <Table>
             <TableHeader>
               <TableRow className="bg-indigo-50">
-                <TableHead className="text-indigo-900">Intervalo</TableHead>
-                <TableHead className="text-indigo-900 text-right">Distancia</TableHead>
-                <TableHead className="text-indigo-900 text-right">Dist. acumulada</TableHead>
-                <TableHead className="text-indigo-900 text-right">Ritmo</TableHead>
-                <TableHead className="text-indigo-900 text-right">Tiempo</TableHead>
-                <TableHead className="text-indigo-900 text-right">Acumulado</TableHead>
+                <TableHead className="text-indigo-900 text-center">Int</TableHead>
+                <TableHead className="text-indigo-900 text-center">Dist</TableHead>
+                <TableHead className="text-indigo-900 text-center">Dt.Acum</TableHead>
+                <TableHead className="text-indigo-900 text-center">Ritmo</TableHead>
+                <TableHead className="text-indigo-900 text-center">Tiempo</TableHead>
+                <TableHead className="text-indigo-900 text-center">T.Acum</TableHead>
                 <TableHead className="text-indigo-900 text-center">Altitud</TableHead>
               </TableRow>
             </TableHeader>
@@ -62,7 +62,7 @@ export function PaceTable({ paceData, intervalType }: PaceTableProps) {
                     key={index}
                     className="hover:bg-indigo-50 transition-colors"
                   >
-                    <TableCell className="text-indigo-900">
+                    <TableCell className="text-center text-indigo-900">
                       {getIntervalLabel(index)}
                     </TableCell>
                     <TableCell className="text-right text-indigo-700">
@@ -72,7 +72,7 @@ export function PaceTable({ paceData, intervalType }: PaceTableProps) {
                       {cumulativeDistanceKm.toFixed(2)} km
                     </TableCell>
                     <TableCell className="text-right text-indigo-900">
-                      {secondsToPace(interval.pace)} /km
+                      {secondsToPace(interval.pace)}/km
                     </TableCell>
                     <TableCell className="text-right text-indigo-700">
                       {secondsToTime(interval.time, false)}

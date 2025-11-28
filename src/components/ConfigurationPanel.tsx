@@ -43,8 +43,9 @@ export function ConfigurationPanel({
           value={targetTime}
           onChange={(e) => onTargetTimeChange(e.target.value)}
           placeholder="HH:MM:SS"
+          className="bg-white/50 border border-gray-300"
         />
-        <p className="text-xs text-muted-foreground">Formato: HH:MM:SS o MM:SS</p>
+
       </div>
 
       {/* Interval Type */}
@@ -54,7 +55,7 @@ export function ConfigurationPanel({
           Tipo de intervalo
         </Label>
         <Select value={intervalType} onValueChange={(value) => onIntervalTypeChange(value as IntervalType)}>
-          <SelectTrigger>
+          <SelectTrigger className="bg-white/50 border border-gray-300">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -122,7 +123,7 @@ export function ConfigurationPanel({
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          Negative split: empiezas más lento y terminas más rápido
+          Negative split: Empezar lento y terminar rápido.
         </p>
       </div>
 
@@ -150,7 +151,7 @@ export function ConfigurationPanel({
           <span>Más difícil</span>
         </div>
         <p className="text-xs text-muted-foreground">
-          Ajusta cuánto te ralentizas en subidas y aceleras en bajadas
+          Elige cuánto frenas en subidas y aprietas en bajadas.
         </p>
       </div>
     </div>
