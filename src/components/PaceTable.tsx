@@ -11,9 +11,9 @@ interface PaceTableProps {
 export function PaceTable({ paceData, intervalType }: PaceTableProps) {
   const getIntervalLabel = (index: number): string => {
     if (intervalType === 'km') {
-      return `${index + 1} km`;
+      return `${index + 1}`;
     } else if (intervalType === 'mile') {
-      return `${index + 1} mi`;
+      return `${index + 1}`;
     } else {
       return `${index + 1}`;
     }
