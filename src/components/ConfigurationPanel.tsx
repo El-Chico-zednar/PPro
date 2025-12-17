@@ -31,7 +31,7 @@ export function ConfigurationPanel({
   onSegmentLengthChange
 }: ConfigurationPanelProps) {
   return (
-    <div className="space-y-6 mt-6">
+    <div className="space-y-6">
       {/* Target Time */}
       <div className="space-y-2 mt-[0px] mr-[0px] mb-[24px] ml-[0px]">
         <Label className="flex items-center gap-2">

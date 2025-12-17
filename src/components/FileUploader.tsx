@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { RouteData } from '../types/pace';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { parseGPX, parseTCX } from '../utils/gpxParser';
 
 interface FileUploaderProps {
@@ -118,7 +118,7 @@ export function FileUploader({ onFileProcessed, onRemoveRoute, isEditingStrategy
 
   return (
     <>
-      {!isEditingStrategy && !hasRouteLoaded && (
+      {!isEditingStrategy && (
         <div className="space-y-4">
           <div className="border-2 border-dashed border-border rounded-lg text-center hover:border-primary transition-colors pt-[16px] pr-[32px] pb-[12px] pl-[32px] mb-4">
             <input
@@ -130,10 +130,10 @@ export function FileUploader({ onFileProcessed, onRemoveRoute, isEditingStrategy
             />
 
             <div className="flex flex-col items-center gap-3">
-              {fileName ? (
+              {fileName || hasRouteLoaded ? (
                 <>
                   <Check className="h-12 w-12 text-green-500" />
-                  <div className="text-sm">{fileName}</div>
+                  <div className="text-sm">{fileName || 'Archivo cargado'}</div>
                 </>
               ) : (
                 <>
@@ -154,10 +154,10 @@ export function FileUploader({ onFileProcessed, onRemoveRoute, isEditingStrategy
                   variant="outline"
                 >
                   <FileText className="mr-2 h-4 w-4" />
-                  {isProcessing ? 'Procesando...' : fileName ? 'Cambiar archivo' : 'Seleccionar archivo'}
+                  {isProcessing ? 'Procesando...' : (fileName || hasRouteLoaded) ? 'Cambiar archivo' : 'Seleccionar archivo'}
                 </Button>
 
-                {fileName && (
+                {(fileName || hasRouteLoaded) && (
                   <Button
                     onClick={handleRemoveRoute}
                     variant="outline"
@@ -170,7 +170,7 @@ export function FileUploader({ onFileProcessed, onRemoveRoute, isEditingStrategy
             </div>
           </div>
 
-          {!fileName && (
+          {!fileName && !hasRouteLoaded && (
             <>
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">

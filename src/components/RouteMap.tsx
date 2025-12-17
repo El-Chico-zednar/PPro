@@ -347,7 +347,7 @@ export function RouteMap({ route, paceData, hoverPoint, mapTileLayer = 'light' }
       <div
         ref={mapContainerRef}
         className={`w-full h-full ${isLoading ? 'hidden' : 'block'}`}
-        style={{ minHeight: '100%', height: '100%', width: '100%' }}
+        style={{ minHeight: '256px', height: '100%', width: '100%', position: 'relative' }}
         id="route-map"
       />
     </div>

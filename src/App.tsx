@@ -7,9 +7,11 @@ import { RouteMap } from './components/RouteMap';
 import { PaceChart } from './components/PaceChart';
 import { PaceTable } from './components/PaceTable';
 import { HomePage, PopularRace } from './components/HomePage';
+import { MobileRacePlanner } from './components/MobileRacePlanner';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
+import { useViewport } from './hooks/useViewport';
 
 import { supabase, GPX_BUCKET } from './supabase/client';
 import { parseGPX, parseTCX } from './utils/gpxParser';
@@ -32,6 +34,7 @@ import {
 
 export default function App() {
   const navigate = useNavigate();
+  const { isMobile } = useViewport();
   const [currentRoute, setCurrentRoute] = useState<RouteData | null>(null);
   const [strategyName, setStrategyName] = useState('');
   const [targetTime, setTargetTime] = useState('00:45:00');
@@ -356,7 +359,7 @@ export default function App() {
       setStrategyName(race.name || '');
       setEditingStrategyId(null);
       setOriginalParams(null);
-      navigate('/race-planner');
+      navigate(isMobile ? '/mrace-planner' : '/race-planner');
       toast.success(`Recorrido "${race.name}" cargado`);
     } catch (error: any) {
       console.error('Error cargando GPX de Supabase', error);
@@ -433,7 +436,7 @@ export default function App() {
         setCurrentRoute(null);
         setPaceData(null);
         setIsPopularRaceLoaded(false);
-        navigate('/race-planner');
+        navigate(isMobile ? '/mrace-planner' : '/race-planner');
       }}
       onLoadStrategy={(strategy) => {
         // Cargar todos los datos de la estrategia
@@ -452,7 +455,7 @@ export default function App() {
         }
         setIsPopularRaceLoaded(false);
 
-        navigate('/race-planner');
+        navigate(isMobile ? '/mrace-planner' : '/race-planner');
         toast.success(`Estrategia "${strategy.name}" cargada`);
 
         // Guardar los parámetros originales
@@ -549,7 +552,7 @@ export default function App() {
               )}
 
               {currentRoute && (
-                <div className="mb-4 bg-card rounded-lg border mt-[0px] mr-[0px] ml-[0px] p-2">
+                <div className="mb-6 bg-card rounded-lg border mt-[0px] mr-[0px] ml-[0px] p-2">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm">{currentRoute.name}</span>
                   </div>
@@ -682,11 +685,44 @@ export default function App() {
     </div>
   );
 
+  const mobilePlannerElement = (
+    <MobileRacePlanner
+      currentRoute={currentRoute}
+      setCurrentRoute={setCurrentRoute}
+      strategyName={strategyName}
+      setStrategyName={setStrategyName}
+      targetTime={targetTime}
+      setTargetTime={setTargetTime}
+      intervalType={intervalType}
+      setIntervalType={setIntervalType}
+      pacingStrategy={pacingStrategy}
+      setPacingStrategy={setPacingStrategy}
+      climbEffort={climbEffort}
+      setClimbEffort={setClimbEffort}
+      segmentLength={segmentLength}
+      setSegmentLength={setSegmentLength}
+      paceData={paceData}
+      setPaceData={setPaceData}
+      isPopularRaceLoaded={isPopularRaceLoaded}
+      setIsPopularRaceLoaded={setIsPopularRaceLoaded}
+      editingStrategyId={editingStrategyId}
+      setEditingStrategyId={setEditingStrategyId}
+      originalParams={originalParams}
+      setOriginalParams={setOriginalParams}
+      handleSaveStrategy={handleSaveStrategy}
+      handleResetChanges={handleResetChanges}
+      hasParameterChanges={hasParameterChanges}
+      nameError={nameError}
+      setNameError={setNameError}
+    />
+  );
+
   return (
     <>
       <Routes>
         <Route path="/home" element={homePageElement} />
         <Route path="/race-planner" element={plannerPageElement} />
+        <Route path="/mrace-planner" element={mobilePlannerElement} />
         <Route path="/" element={<Navigate to="/home" replace />} />
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
