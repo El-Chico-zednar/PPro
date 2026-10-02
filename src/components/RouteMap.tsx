@@ -15,6 +15,11 @@ interface RouteMapProps {
   mapTileLayer?: string;
 }
 
+// CARTO exige API key en sus basemaps: sin ella devuelve teselas "API KEY REQUIRED".
+const CARTO_KEY_QUERY = import.meta.env.VITE_CARTO_API_KEY
+  ? `?key=${import.meta.env.VITE_CARTO_API_KEY}`
+  : '';
+
 export function RouteMap({ route, paceData, hoverPoint, mapTileLayer = 'light' }: RouteMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -28,12 +33,12 @@ export function RouteMap({ route, paceData, hoverPoint, mapTileLayer = 'light' }
 
   const tileLayerConfigs: Record<string, { url: string; attribution: string; options?: Record<string, any> }> = {
     light: {
-      url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      url: `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png${CARTO_KEY_QUERY}`,
       attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
       options: { subdomains: 'abcd', maxZoom: 19, minZoom: 1, crossOrigin: true }
     },
     dark: {
-      url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      url: `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png${CARTO_KEY_QUERY}`,
       attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
       options: { subdomains: 'abcd', maxZoom: 19, minZoom: 1, crossOrigin: true }
     },
