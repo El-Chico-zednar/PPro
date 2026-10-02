@@ -1,0 +1,3 @@
+# Una URL de evento de finishers.com por línea. Uso: npm run import -- --file races.txt
+https://www.finishers.com/es/evento/maraton-de-malaga
+https://www.finishers.com/es/evento/medio-maraton-bidasoa
