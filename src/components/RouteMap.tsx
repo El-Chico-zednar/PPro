@@ -28,6 +28,8 @@ export function RouteMap({ route, paceData, hoverPoint, mapTileLayer = 'light' }
   const hoverMarkerRef = useRef<any>(null);
   const intervalMarkersRef = useRef<any[]>([]);
   const tileLayerRef = useRef<any>(null);
+  // Si el usuario ya ha movido o hecho zoom, no le reencuadramos la ruta al redimensionar
+  const userMovedMapRef = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
   const [leafletReady, setLeafletReady] = useState(false);
 
@@ -52,6 +54,18 @@ export function RouteMap({ route, paceData, hoverPoint, mapTileLayer = 'light' }
       attribution: 'Map data &copy; OpenStreetMap contributors, SRTM | Map style &copy; OpenTopoMap',
       options: { maxZoom: 17 }
     }
+  };
+
+  // Encuadra la ruta completa. Si el contenedor aún no tiene tamaño (p. ej. está
+  // montándose dentro de un layout que todavía no ha calculado su ancho), Leaflet
+  // calcularía el zoom máximo: lo dejamos para cuando el ResizeObserver vea tamaño real.
+  const fitRoute = () => {
+    const map = mapRef.current;
+    const container = mapContainerRef.current;
+    if (!map || !routeLayerRef.current || !container) return;
+    if (container.clientWidth === 0 || container.clientHeight === 0) return;
+    map.invalidateSize();
+    map.fitBounds(routeLayerRef.current.getBounds(), { padding: [30, 30] });
   };
 
   const updateIntervalMarkerVisibility = () => {
@@ -169,12 +183,14 @@ export function RouteMap({ route, paceData, hoverPoint, mapTileLayer = 'light' }
       }).addTo(map);
       mapRef.current = map;
 
-      // Force map to invalidate size after a short delay
-      setTimeout(() => {
-        if (mapRef.current) {
-          mapRef.current.invalidateSize();
-        }
-      }, 200);
+      // Cualquier interacción del usuario desactiva el reencuadre automático
+      const markUserMoved = () => {
+        userMovedMapRef.current = true;
+      };
+      map.on('dragstart', markUserMoved);
+      ['wheel', 'dblclick', 'touchstart'].forEach((evt) =>
+        mapContainerRef.current?.addEventListener(evt, markUserMoved, { passive: true })
+      );
     } catch (err) {
       console.error('Error initializing map:', err);
     }
@@ -274,19 +290,9 @@ export function RouteMap({ route, paceData, hoverPoint, mapTileLayer = 'light' }
       });
     }
 
-    // Fit bounds to show entire route
-    if (routeLayerRef.current) {
-      mapRef.current.fitBounds(routeLayerRef.current.getBounds(), {
-        padding: [30, 30]
-      });
-    }
-
-    // Force map to recalculate size
-    setTimeout(() => {
-      if (mapRef.current) {
-        mapRef.current.invalidateSize();
-      }
-    }, 100);
+    // Ruta nueva: volvemos a encuadrarla entera
+    userMovedMapRef.current = false;
+    fitRoute();
 
     updateIntervalMarkerVisibility();
   }, [leafletReady, route, paceData]);
@@ -330,6 +336,25 @@ export function RouteMap({ route, paceData, hoverPoint, mapTileLayer = 'light' }
       hoverMarkerRef.current.setLatLng(latlng);
     }
   }, [hoverPoint]);
+
+  // Cuando el contenedor cambia de tamaño (montaje, layout, rotación del móvil),
+  // Leaflet debe recalcular sus dimensiones y, si el usuario no ha tocado el mapa,
+  // reencuadrar la ruta.
+  useEffect(() => {
+    const container = mapContainerRef.current;
+    if (!container || !leafletReady) return;
+
+    const observer = new ResizeObserver(() => {
+      if (!mapRef.current) return;
+      if (userMovedMapRef.current) {
+        mapRef.current.invalidateSize();
+      } else {
+        fitRoute();
+      }
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [leafletReady]);
 
   // Cleanup on unmount
   useEffect(() => {
