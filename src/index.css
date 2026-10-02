@@ -2798,3 +2798,32 @@ html {
     transform: translateX(-50%);
     /* centrar horizontalmente */
 }
+
+/* Logo del planificador: centrado entre paneles en pantallas anchas,
+   encima del panel izquierdo cuando no hay hueco central. */
+.planner-logo {
+    transition: opacity 150ms;
+}
+.planner-logo:hover {
+    opacity: 0.8;
+}
+.planner-logo svg {
+    height: auto;
+}
+.planner-logo--inline {
+    margin-top: -1rem;
+}
+.planner-logo--center {
+    display: none;
+}
+.planner-logo--center .planner-logo {
+    max-width: 250px;
+}
+@media (min-width: 1280px) {
+    .planner-logo--inline {
+        display: none;
+    }
+    .planner-logo--center {
+        display: flex;
+    }
+}

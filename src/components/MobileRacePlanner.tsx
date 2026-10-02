@@ -11,6 +11,7 @@ import { Label } from './ui/label';
 import { RouteData, PaceStrategy, IntervalType } from '../types/pace';
 import { Save, RotateCcw, Home, ChevronDown, ChevronUp, Layers } from 'lucide-react';
 import { Button } from './ui/button';
+import { Logo } from './Logo';
 
 interface MobileRacePlannerProps {
     currentRoute: RouteData | null;
@@ -86,9 +87,7 @@ export function MobileRacePlanner({
                         <Home className="h-5 w-5" />
                         <span className="font-medium">Inicio</span>
                     </button>
-                    <svg width="120" height="25" viewBox="0 0 250 53" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M33.527 0H250L216.473 53H0L33.527 0Z" fill="#000000" />
-                    </svg>
+                    <Logo width={120} color="#000000" />
                 </div>
             </div>
 

@@ -18,6 +18,7 @@ import {
   AlertDialogTrigger,
 } from './ui/alert-dialog';
 import { SavedStrategy } from '../types/strategy';
+import { Logo } from './Logo';
 
 export interface PopularRace {
   id: number | string;
@@ -148,9 +149,7 @@ export function HomePage({ onCreateNew, onLoadStrategy, savedStrategies, onDelet
           <div className="lg:col-span-1">
             {/* Logo */}
             <div className="mb-6">
-              <svg width="250" height="53" viewBox="0 0 250 53" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M33.527 0H250L216.473 53H0L33.527 0Z" fill="#797979" />
-              </svg>
+              <Logo color="#111111" />
             </div>
 
             <Card className="p-6">

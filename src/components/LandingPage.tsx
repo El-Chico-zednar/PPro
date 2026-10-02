@@ -1,6 +1,7 @@
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { ArrowRight, Target, TrendingUp, Map, Clock } from 'lucide-react';
+import { Logo } from './Logo';
 
 interface LandingPageProps {
     onGetStarted: () => void;
@@ -15,9 +16,7 @@ export function LandingPage({ onGetStarted, onViewDemo }: LandingPageProps) {
                 <div className="text-center mb-16">
                     {/* Logo */}
                     <div className="flex justify-center mb-8">
-                        <svg width="300" height="64" viewBox="0 0 250 53" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M33.527 0H250L216.473 53H0L33.527 0Z" fill="#797979" />
-                        </svg>
+                        <Logo width={300} color="#111111" />
                     </div>
 
                     <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
