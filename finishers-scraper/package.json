@@ -1,10 +1,14 @@
 {
   "name": "finishers-scraper",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Importa carreras populares de finishers.com a Supabase",
+  "main": "import-races.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "import": "node import-races.js",
+    "import:dry": "node import-races.js --dry-run",
+    "prune": "node import-races.js --prune-past",
+    "prune:dry": "node import-races.js --prune-past --dry-run",
+    "postinstall": "playwright install chromium"
   },
   "keywords": [],
   "author": "",

@@ -31,6 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from './components/ui/alert-dialog';
+import { Logo } from './components/Logo';
 
 export default function App() {
   const navigate = useNavigate();
@@ -493,25 +494,19 @@ export default function App() {
         <div className="absolute inset-0 bg-black/10 z-10 pointer-events-none"></div>
       )}
 
-      {/* Header flotante */}
-      <div className="absolute top-0 left-0 right-0 z-30 bg-gradient-to-b from-black/05 to-transparent p-4 md:p-6">
-        <div className="flex items-center justify-center">
-          <button
-            type="button"
-            onClick={() => navigate('/home')}
-            className="flex items-center gap-3 text-white hover:opacity-90 transition mr-40"
-          >
-            <svg width="250" height="53" viewBox="0 0 250 53" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M33.527 0H250L216.473 53H0L33.527 0Z" fill="#ffffff" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
       {/* Contenedor de paneles laterales */}
       <div className="absolute inset-0 z-20 pointer-events-none flex justify-between items-start">
         {/* Panel izquierdo - Configuración */}
         <div className="w-84 max-w-88 max-h-[calc(100vh-24px)] pointer-events-auto ml-6 pt-8 flex flex-col">
+          {/* En pantallas estrechas no hay hueco central: el logo va encima del panel */}
+          <button
+            type="button"
+            onClick={() => navigate('/home')}
+            aria-label="Ir al inicio"
+            className="planner-logo planner-logo--inline self-start mb-3"
+          >
+            <Logo width={150} color="#111111" />
+          </button>
           <Card className="flex flex-col h-full bg-white/50 backdrop-blur-sm overflow-hidden">
             {/* Fixed Header Section */}
             <div className="px-4 pt-4 pb-0 shrink-0">
@@ -602,8 +597,17 @@ export default function App() {
           </Card>
         </div>
 
-        {/* Espacio central para ver el track */}
-        <div className="flex-1"></div>
+        {/* Espacio central para ver el track, con el logo centrado arriba (pantallas anchas) */}
+        <div className="planner-logo--center flex-1 min-w-0 justify-center px-6 pt-8">
+          <button
+            type="button"
+            onClick={() => navigate('/home')}
+            aria-label="Ir al inicio"
+            className="planner-logo pointer-events-auto w-full"
+          >
+            <Logo color="#111111" className="w-full" />
+          </button>
+        </div>
 
         {/* Panel derecho - Resultados */}
         <div className="w-fit min-w-96 max-w-128 h-full overflow-y-auto pointer-events-auto space-y-4 mr-6 mt-[-16px] pt-12">

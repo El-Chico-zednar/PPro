@@ -1,0 +1,29 @@
+interface LogoProps {
+  width?: number;
+  color?: string;
+  className?: string;
+}
+
+// Wordmark "PACE TEST": letras construidas a mano con la misma inclinación
+// que el paralelogramo original (~32°), con esquinas biseladas.
+const VIEWBOX_WIDTH = 385;
+const VIEWBOX_HEIGHT = 53;
+const PATH =
+  'M40.53 0L69.53 0L53.71 25L42.28 32L24.28 32L11 53L0 53L29.10 7ZM37.57 11L31.24 21L45.24 21L51.57 11ZM43 53L72.10 7L83.53 0L112.53 0L79 53L68 53L81.28 32L67.28 32L54 53ZM80.57 11L74.24 21L88.24 21L94.57 11ZM126.53 0L155.53 0L148.57 11L123.57 11L103.96 42L128.96 42L126.43 46L115 53L86 53L115.10 7ZM169.53 0L198.53 0L191.57 11L166.57 11L160.24 21L180.24 21L173.28 32L153.28 32L146.96 42L171.96 42L169.43 46L158 53L129 53L158.10 7ZM225.53 0L254.53 0L247.57 11L235.07 11L212.93 46L201.50 53L197.50 53L224.07 11L211.57 11L214.10 7ZM268.53 0L297.53 0L290.57 11L265.57 11L259.24 21L279.24 21L272.28 32L252.28 32L245.96 42L270.96 42L268.43 46L257 53L228 53L257.10 7ZM311.53 0L340.53 0L333.57 11L308.57 11L302.24 21L327.24 21L311.43 46L300 53L271 53L277.96 42L302.96 42L309.28 32L284.28 32L300.10 7ZM354.53 0L383.53 0L376.57 11L364.07 11L341.93 46L330.50 53L326.50 53L353.07 11L340.57 11L343.10 7Z';
+
+export function Logo({ width = 250, color = '#111111', className }: LogoProps) {
+  return (
+    <svg
+      width={width}
+      height={Math.round((width * VIEWBOX_HEIGHT) / VIEWBOX_WIDTH)}
+      viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-label="Pace Test"
+      className={className}
+    >
+      <path d={PATH} fill={color} fillRule="evenodd" />
+    </svg>
+  );
+}
